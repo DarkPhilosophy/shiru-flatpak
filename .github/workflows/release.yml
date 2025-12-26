@@ -1,0 +1,112 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Force build and release even if version matches"
+        type: boolean
+        default: false
+  schedule:
+    - cron: "0 3 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder curl python3
+          flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+      - name: Check upstream version
+        id: check
+        run: |
+          python3 - << 'PY'
+import json
+import os
+import urllib.request
+
+url = 'https://api.github.com/repos/RockinChaos/Shiru/releases/latest'
+with urllib.request.urlopen(url) as resp:
+    data = json.load(resp)
+
+latest = data.get('tag_name', '').strip()
+body = (data.get('body') or '').strip()
+
+with open('VERSION', 'r', encoding='utf-8') as f:
+    current = f.read().strip()
+
+force = os.environ.get('FORCE', 'false').lower() == 'true'
+should_build = force or (latest and latest != current)
+
+notes = [
+    '# Shiru Flatpak Release',
+    '',
+    f'Custom message: Repackaged upstream {latest} into Flatpak with automated caching and version-aware updates.',
+    '',
+    'Upstream notes:',
+    body or '(no upstream notes found)',
+    ''
+]
+
+with open('RELEASE_NOTES.md', 'w', encoding='utf-8') as f:
+    f.write('\n'.join(notes))
+
+print(f'latest={latest}')
+print(f'current={current}')
+print(f'should_build={should_build}')
+
+with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as f:
+    f.write(f"tag={latest}\n")
+    f.write(f"should_build={'true' if should_build else 'false'}\n")
+PY
+        env:
+          FORCE: ${{ inputs.force }}
+
+      - name: Stop if no update
+        if: steps.check.outputs.should_build != 'true'
+        run: echo "No new upstream version; skipping build."
+
+      - name: Build Flatpak
+        if: steps.check.outputs.should_build == 'true'
+        env:
+          CACHE_ROOT: ${{ github.workspace }}/.cache/shiru-flatpak
+        run: |
+          ./flatpak-build.sh --clean --update --force-install --system --repo "${GITHUB_WORKSPACE}/flatpak-repo"
+
+      - name: Create bundle
+        if: steps.check.outputs.should_build == 'true'
+        run: |
+          flatpak build-bundle "${GITHUB_WORKSPACE}/flatpak-repo" shiru.flatpak com.github.rockinchaos.shiru
+          sha256sum shiru.flatpak > shiru.flatpak.sha256
+
+      - name: Update VERSION
+        if: steps.check.outputs.should_build == 'true'
+        run: |
+          echo "${{ steps.check.outputs.tag }}" > VERSION
+          git config user.name "shiru-flatpak-bot"
+          git config user.email "shiru-flatpak-bot@users.noreply.github.com"
+          git add VERSION
+          git commit -m "chore: bump VERSION to ${{ steps.check.outputs.tag }}" || true
+          git push
+
+      - name: Create GitHub release
+        if: steps.check.outputs.should_build == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.check.outputs.tag }}
+          name: Shiru Flatpak ${{ steps.check.outputs.tag }}
+          body_path: RELEASE_NOTES.md
+          files: |
+            shiru.flatpak
+            shiru.flatpak.sha256

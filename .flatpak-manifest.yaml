@@ -1,0 +1,99 @@
+app-id: com.github.rockinchaos.shiru
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+
+command: shiru
+
+finish-args:
+  # Network access for P2P torrent streaming
+  - --share=network
+  - --share=ipc
+  
+  # Socket access for notifications and Discord RPC
+  - --socket=wayland
+  - --socket=x11
+  - --socket=session-bus
+  - --socket=pulseaudio
+  
+  # File system access for media libraries
+  - --filesystem=xdg-download
+  - --filesystem=xdg-music
+  - --filesystem=xdg-videos
+  - --filesystem=home  # Full home access for media scanning
+  - --filesystem=/run/media  # USB drives and external media
+  
+  # Graphics and hardware
+  - --device=dri  # Hardware video decoding
+
+modules:
+  - name: shiru
+    buildsystem: simple
+    build-commands:
+      # Create app directories
+      - mkdir -p /app/bin /app/lib/shiru /app/share/applications /app/share/icons/hicolor/256x256/apps
+      
+      # Use extracted .deb content from the build script
+      - |
+        EXTRACTED_DIR="flatpak-staging/current"
+        if [ ! -d "$EXTRACTED_DIR" ]; then
+          echo "ERROR: Extracted .deb not found at $EXTRACTED_DIR"
+          exit 1
+        fi
+        cp -a "$EXTRACTED_DIR"/. /app/lib/shiru/
+      
+      # Ensure proper permissions
+      - |
+        SHIRU_REAL="$(find /app/lib/shiru -maxdepth 6 -type f -name shiru -perm -u+x | head -n1)"
+        if [ -z "$SHIRU_REAL" ]; then
+          echo "ERROR: Unable to locate Shiru binary in /app/lib/shiru"
+          exit 1
+        fi
+        ln -sf "$SHIRU_REAL" /app/lib/shiru/shiru
+        chmod +x /app/lib/shiru/shiru
+
+        SANDBOX_BIN="$(find /app/lib/shiru -maxdepth 6 -type f -name chrome-sandbox | head -n1)"
+        if [ -n "$SANDBOX_BIN" ]; then
+          chmod 4755 "$SANDBOX_BIN" || true
+        fi
+      
+      # Create launcher script (disable Electron sandbox in Flatpak)
+      - |
+        cat > /app/bin/shiru << 'LAUNCHER'
+        #!/bin/bash
+        export LD_LIBRARY_PATH="/app/lib/shiru:${LD_LIBRARY_PATH}"
+        export FONTCONFIG_PATH="/etc/fonts"
+        # Disable Electron SUID sandbox inside Flatpak
+        export ELECTRON_OZONE_PLATFORM_HINT=auto
+        exec /app/lib/shiru/shiru --no-sandbox "$@"
+        LAUNCHER
+      - chmod +x /app/bin/shiru
+      
+      # Desktop entry
+      - |
+        cat > /app/share/applications/com.github.rockinchaos.shiru.desktop << 'DESKTOP'
+        [Desktop Entry]
+        Type=Application
+        Name=Shiru
+        Comment=Personal media library and torrent streaming
+        Exec=shiru %U
+        Icon=com.github.rockinchaos.shiru
+        Categories=AudioVideo;Video;
+        Keywords=anime;media;library;torrent;streaming;
+        MimeType=x-scheme-handler/shiru;x-scheme-handler/magnet;application/x-torrent;
+        Terminal=false
+        DESKTOP
+      
+      # Install icon
+      - cp /app/lib/shiru/usr/share/icons/hicolor/512x512/apps/shiru.png /app/share/icons/hicolor/256x256/apps/com.github.rockinchaos.shiru.png || true
+    
+    sources:
+      - type: dir
+        path: .
+
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /share/man
+  - '*.la'
+  - '*.a'
