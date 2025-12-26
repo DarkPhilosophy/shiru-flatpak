@@ -36,7 +36,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y flatpak flatpak-builder curl python3
-          flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak remote-add --if-not-exists --user flathub https://flathub.org/repo/flathub.flatpakrepo
 
       - name: Check upstream version
         id: check
@@ -137,7 +137,7 @@ jobs:
         env:
           CACHE_ROOT: ${{ github.workspace }}/.cache/shiru-flatpak
         run: |
-          ./flatpak-build.sh --clean --update --force-install --system --repo "${GITHUB_WORKSPACE}/flatpak-repo"
+          ./flatpak-build.sh --clean --update --force-install --repo "${GITHUB_WORKSPACE}/flatpak-repo"
 
       - name: Create bundle
         if: steps.check.outputs.should_build == 'true'
