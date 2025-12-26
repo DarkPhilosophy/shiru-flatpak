@@ -261,17 +261,57 @@ fi
 LAST_BUILT_FILE="${CACHE_ROOT}/last-built-version.txt"
 DEB_FILE="${DOWNLOAD_DIR}/${ASSET_NAME}"
 
+if command -v rg > /dev/null 2>&1; then
+  RUNTIME="$(rg -m1 '^runtime:' "$MANIFEST" | awk '{print $2}')"
+  RUNTIME_VERSION="$(rg -m1 '^runtime-version:' "$MANIFEST" | awk '{print $2}')"
+  SDK="$(rg -m1 '^sdk:' "$MANIFEST" | awk '{print $2}')"
+else
+  RUNTIME="$(grep -m1 '^runtime:' "$MANIFEST" | awk '{print $2}')"
+  RUNTIME_VERSION="$(grep -m1 '^runtime-version:' "$MANIFEST" | awk '{print $2}')"
+  SDK="$(grep -m1 '^sdk:' "$MANIFEST" | awk '{print $2}')"
+fi
+
+RUNTIME_VERSION="$(printf '%s' "$RUNTIME_VERSION" | tr -d "'\"")"
+ARCH="$(flatpak --default-arch 2>/dev/null || echo x86_64)"
+RUNTIME_ID="${RUNTIME}/${ARCH}/${RUNTIME_VERSION}"
+SDK_ID="${SDK}/${ARCH}/${RUNTIME_VERSION}"
+
+if [ -z "$RUNTIME" ] || [ -z "$RUNTIME_VERSION" ] || [ -z "$SDK" ]; then
+  echo "ERROR: Unable to read runtime/sdk info from $MANIFEST"
+  exit 1
+fi
+
 LAST_BUILT=""
 if [ -f "$LAST_BUILT_FILE" ]; then
   LAST_BUILT="$(cat "$LAST_BUILT_FILE")"
 fi
 
-INFO_OUTPUT="$(flatpak info $INSTALL_SCOPE --show-metadata "$APP_ID" 2>/dev/null || true)"
+INFO_USER="$(flatpak info --user --show-metadata "$APP_ID" 2>/dev/null || true)"
+INFO_SYSTEM="$(flatpak info --system --show-metadata "$APP_ID" 2>/dev/null || true)"
+INFO_OUTPUT=""
 INSTALLED=false
 INSTALLED_VERSION=""
+INSTALLED_RUNTIME=""
+INSTALLED_SCOPE="none"
+
+if [ -n "$INFO_USER" ]; then
+  INFO_OUTPUT="$INFO_USER"
+  INSTALLED_SCOPE="user"
+fi
+
+if [ -n "$INFO_SYSTEM" ]; then
+  if [ "$INSTALLED_SCOPE" = "user" ]; then
+    INSTALLED_SCOPE="both"
+  else
+    INFO_OUTPUT="$INFO_SYSTEM"
+    INSTALLED_SCOPE="system"
+  fi
+fi
+
 if [ -n "$INFO_OUTPUT" ]; then
   INSTALLED=true
   INSTALLED_VERSION="$(printf '%s\n' "$INFO_OUTPUT" | awk -F= '$1=="version" {print $2; exit}')"
+  INSTALLED_RUNTIME="$(printf '%s\n' "$INFO_OUTPUT" | awk -F= '$1=="runtime" {print $2; exit}')"
 fi
 
 EXTRACT_VERSION_DIR="${EXTRACT_CACHE_DIR}/${RELEASE_TAG}"
@@ -286,6 +326,13 @@ if [ -n "$INSTALLED_VERSION" ]; then
   echo "Installed ver:  ${INSTALLED_VERSION}"
 else
   echo "Installed ver:  (unknown)"
+fi
+if [ -n "$INSTALLED_RUNTIME" ]; then
+  echo "Installed rt:   ${INSTALLED_RUNTIME}"
+fi
+if [ "$INSTALLED_SCOPE" = "system" ] && [ "$INSTALL_SCOPE" = "--user" ]; then
+  echo "NOTE: System install detected; user install will not update system metadata."
+  echo "      Use: flatpak info --user ${APP_ID}"
 fi
 echo "Cached extract: ${HAS_EXTRACT}"
 if [ -n "$LAST_BUILT" ]; then
@@ -303,6 +350,13 @@ elif version_lt "$INSTALLED_VERSION" "$RELEASE_TAG"; then
   NEED_UPDATE=true
 fi
 
+RUNTIME_CHANGED=false
+if [ "$INSTALLED" = true ] && [ -n "$INSTALLED_RUNTIME" ] && [ "$INSTALLED_RUNTIME" != "$RUNTIME_ID" ]; then
+  RUNTIME_CHANGED=true
+  FORCE_INSTALL=true
+  echo "WARNING: Installed runtime ${INSTALLED_RUNTIME} != target ${RUNTIME_ID}; forcing reinstall."
+fi
+
 if [ "$FORCE_INSTALL" = true ] && [ "$INSTALLED" = true ] && [ "$INSTALLED_VERSION" = "$RELEASE_TAG" ]; then
   echo "WARNING: Forcing reinstall of ${APP_ID} at ${RELEASE_TAG}"
 fi
@@ -311,7 +365,7 @@ if [ "$INSTALLED" = true ] && [ "$INSTALLED_VERSION" != "" ] && version_lt "$REL
   echo "WARNING: Installed version ${INSTALLED_VERSION} is newer than ${RELEASE_TAG}"
 fi
 
-if [ "$FORCE_INSTALL" = false ] && [ "$FORCE_UPDATE" = false ] && [ "$NEED_UPDATE" = false ] && [ "$INSTALLED" = true ]; then
+if [ "$FORCE_INSTALL" = false ] && [ "$FORCE_UPDATE" = false ] && [ "$NEED_UPDATE" = false ] && [ "$INSTALLED" = true ] && [ "$RUNTIME_CHANGED" = false ]; then
   echo "Installed version is current; skipping build and install."
   exit 0
 fi
@@ -401,26 +455,6 @@ with open(target, "w", encoding="utf-8") as f:
     f.write("\n".join(out) + "\n")
 PY
 
-if command -v rg > /dev/null 2>&1; then
-  RUNTIME="$(rg -m1 '^runtime:' "$MANIFEST" | awk '{print $2}')"
-  RUNTIME_VERSION="$(rg -m1 '^runtime-version:' "$MANIFEST" | awk '{print $2}')"
-  SDK="$(rg -m1 '^sdk:' "$MANIFEST" | awk '{print $2}')"
-else
-  RUNTIME="$(grep -m1 '^runtime:' "$MANIFEST" | awk '{print $2}')"
-  RUNTIME_VERSION="$(grep -m1 '^runtime-version:' "$MANIFEST" | awk '{print $2}')"
-  SDK="$(grep -m1 '^sdk:' "$MANIFEST" | awk '{print $2}')"
-fi
-
-RUNTIME_VERSION="$(printf '%s' "$RUNTIME_VERSION" | tr -d "'\"")"
-ARCH="$(flatpak --default-arch 2>/dev/null || echo x86_64)"
-RUNTIME_ID="${RUNTIME}/${ARCH}/${RUNTIME_VERSION}"
-SDK_ID="${SDK}/${ARCH}/${RUNTIME_VERSION}"
-
-if [ -z "$RUNTIME" ] || [ -z "$RUNTIME_VERSION" ] || [ -z "$SDK" ]; then
-  echo "ERROR: Unable to read runtime/sdk info from $MANIFEST"
-  exit 1
-fi
-
 cat > "$METADATA_FILE" << EOF
 [Application]
 name=${APP_ID}
@@ -433,6 +467,8 @@ EOF
 echo ""
 echo "[3/5] Setting up Flatpak repository..."
 mkdir -p "$REPO_PATH"
+REPO_PATH="$(cd "$REPO_PATH" && pwd)"
+REMOTE_URL="file://$REPO_PATH"
 echo "✓ Repository ready at $REPO_PATH ($INSTALL_SCOPE)"
 
 # Build the Flatpak
@@ -449,6 +485,7 @@ BUILD_RESULT=$?
 if [ $BUILD_RESULT -eq 0 ]; then
   echo "✓ Flatpak build completed successfully"
   echo "$RELEASE_TAG" > "$LAST_BUILT_FILE"
+  flatpak build-update-repo "$REPO_PATH"
   rm -rf "$STAGING_DIR"
   if [ -d "$EXTRACT_CACHE_DIR" ]; then
     find "$EXTRACT_CACHE_DIR" -mindepth 1 -maxdepth 1 -type d ! -name "$RELEASE_TAG" -exec rm -rf {} +
@@ -473,8 +510,15 @@ if [ "$SKIP_INSTALL" = true ]; then
   exit 0
 fi
 
-flatpak remote-add $INSTALL_SCOPE --if-not-exists --no-gpg-verify "$REMOTE_NAME" "file://$REPO_PATH"
-flatpak remote-modify $INSTALL_SCOPE --no-gpg-verify "$REMOTE_NAME"
+CURRENT_URL="$(flatpak remotes $INSTALL_SCOPE --show-details 2>/dev/null | awk -v name="$REMOTE_NAME" '$1==name {print $3; exit}')"
+if [ -z "$CURRENT_URL" ]; then
+  flatpak remote-add $INSTALL_SCOPE --no-gpg-verify "$REMOTE_NAME" "$REMOTE_URL"
+else
+  if [ "$CURRENT_URL" != "$REMOTE_URL" ]; then
+    flatpak remote-modify $INSTALL_SCOPE --url="$REMOTE_URL" "$REMOTE_NAME"
+  fi
+  flatpak remote-modify $INSTALL_SCOPE --no-gpg-verify "$REMOTE_NAME"
+fi
 
 echo ""
 echo "[5/5] Installing Flatpak..."
