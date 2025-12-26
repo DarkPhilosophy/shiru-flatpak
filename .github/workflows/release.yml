@@ -38,6 +38,28 @@ jobs:
           sudo apt-get install -y flatpak flatpak-builder curl python3
           flatpak remote-add --if-not-exists --user flathub https://flathub.org/repo/flathub.flatpakrepo
 
+      - name: Check repo release
+        id: repo_release
+        run: |
+          set -e
+          HTTP_CODE="$(curl -sS -o /tmp/repo-release.json -w "%{http_code}" https://api.github.com/repos/DarkPhilosophy/shiru-flatpak/releases/latest)"
+          if [ "$HTTP_CODE" = "200" ]; then
+            python3 - << 'PY'
+import json
+import os
+
+with open("/tmp/repo-release.json", "r", encoding="utf-8") as f:
+    data = json.load(f)
+
+tag = (data.get("tag_name") or "").strip()
+with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+    f.write(f"tag={tag}\n")
+PY
+          else
+            echo "No releases found (HTTP ${HTTP_CODE})."
+            echo "tag=" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Check upstream version
         id: check
         run: |
@@ -97,12 +119,11 @@ jobs:
           
           latest = data.get('tag_name', '').strip()
           body = (data.get('body') or '').strip()
-          
-          with open('VERSION', 'r', encoding='utf-8') as f:
-              current = f.read().strip()
-          
+
+          repo_release = os.environ.get('REPO_RELEASE', '').strip()
           force = os.environ.get('FORCE', 'false').lower() == 'true'
-          should_build = force or (latest and latest != current)
+          no_release = repo_release == ''
+          should_build = force or no_release or (latest and latest != repo_release)
           
           notes = [
               '# Shiru Flatpak Release',
@@ -118,7 +139,7 @@ jobs:
               f.write('\n'.join(notes))
           
           print(f'latest={latest}')
-          print(f'current={current}')
+          print(f'repo_release={repo_release or \"(none)\"}')
           print(f'should_build={should_build}')
           
           with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as f:
@@ -127,6 +148,7 @@ jobs:
           PY
         env:
           FORCE: ${{ inputs.force }}
+          REPO_RELEASE: ${{ steps.repo_release.outputs.tag }}
 
       - name: Stop if no update
         if: steps.check.outputs.should_build != 'true'
