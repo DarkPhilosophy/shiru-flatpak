@@ -89,42 +89,42 @@ jobs:
           rm -f "$HEADERS_TMP"
 
           python3 - << 'PY'
-import json
-import os
-
-with open('.github/release-cache/latest.json', 'r', encoding='utf-8') as f:
-    data = json.load(f)
-
-latest = data.get('tag_name', '').strip()
-body = (data.get('body') or '').strip()
-
-with open('VERSION', 'r', encoding='utf-8') as f:
-    current = f.read().strip()
-
-force = os.environ.get('FORCE', 'false').lower() == 'true'
-should_build = force or (latest and latest != current)
-
-notes = [
-    '# Shiru Flatpak Release',
-    '',
-    f'Custom message: Repackaged upstream {latest} into Flatpak with automated caching and version-aware updates.',
-    '',
-    'Upstream notes:',
-    body or '(no upstream notes found)',
-    ''
-]
-
-with open('RELEASE_NOTES.md', 'w', encoding='utf-8') as f:
-    f.write('\n'.join(notes))
-
-print(f'latest={latest}')
-print(f'current={current}')
-print(f'should_build={should_build}')
-
-with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as f:
-    f.write(f"tag={latest}\n")
-    f.write(f"should_build={'true' if should_build else 'false'}\n")
-PY
+          import json
+          import os
+          
+          with open('.github/release-cache/latest.json', 'r', encoding='utf-8') as f:
+              data = json.load(f)
+          
+          latest = data.get('tag_name', '').strip()
+          body = (data.get('body') or '').strip()
+          
+          with open('VERSION', 'r', encoding='utf-8') as f:
+              current = f.read().strip()
+          
+          force = os.environ.get('FORCE', 'false').lower() == 'true'
+          should_build = force or (latest and latest != current)
+          
+          notes = [
+              '# Shiru Flatpak Release',
+              '',
+              f'Custom message: Repackaged upstream {latest} into Flatpak with automated caching and version-aware updates.',
+              '',
+              'Upstream notes:',
+              body or '(no upstream notes found)',
+              ''
+          ]
+          
+          with open('RELEASE_NOTES.md', 'w', encoding='utf-8') as f:
+              f.write('\n'.join(notes))
+          
+          print(f'latest={latest}')
+          print(f'current={current}')
+          print(f'should_build={should_build}')
+          
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as f:
+              f.write(f"tag={latest}\n")
+              f.write(f"should_build={'true' if should_build else 'false'}\n")
+          PY
         env:
           FORCE: ${{ inputs.force }}
 
