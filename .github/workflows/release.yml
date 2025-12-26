@@ -114,7 +114,7 @@ jobs:
         env:
           CACHE_ROOT: ${{ github.workspace }}/.cache/shiru-flatpak
         run: |
-          ./flatpak-build.sh --clean --update --force-install --repo "${GITHUB_WORKSPACE}/flatpak-repo"
+          ./flatpak-build.sh --clean --update --skip-install --repo "${GITHUB_WORKSPACE}/flatpak-repo"
 
       - name: Create bundle
         if: steps.check.outputs.should_build == 'true'

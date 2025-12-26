@@ -2,7 +2,7 @@
 set -e
 
 # Shiru Flatpak Build Script
-# Usage: ./flatpak-build.sh [--repo REPO_PATH] [--clean] [--update] [--system]
+# Usage: ./flatpak-build.sh [--repo REPO_PATH] [--clean] [--update] [--force-install] [--skip-install] [--system]
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_FILE="${SCRIPT_DIR}/flatpak-build.conf"
@@ -33,6 +33,7 @@ INSTALL_SCOPE="--user"
 CLEAN=false
 FORCE_UPDATE=false
 FORCE_INSTALL=false
+SKIP_INSTALL=false
 
 if [ -z "$APP_ID" ]; then
   if command -v rg > /dev/null 2>&1; then
@@ -83,13 +84,17 @@ while [[ $# -gt 0 ]]; do
       FORCE_INSTALL=true
       shift
       ;;
+    --skip-install)
+      SKIP_INSTALL=true
+      shift
+      ;;
     --system)
       INSTALL_SCOPE="--system"
       shift
       ;;
     *)
       echo "Unknown option: $1"
-      echo "Usage: $0 [--repo REPO_PATH] [--clean] [--update] [--force-install] [--system]"
+      echo "Usage: $0 [--repo REPO_PATH] [--clean] [--update] [--force-install] [--skip-install] [--system]"
       exit 1
       ;;
   esac
@@ -406,8 +411,6 @@ EOF
 echo ""
 echo "[3/5] Setting up Flatpak repository..."
 mkdir -p "$REPO_PATH"
-flatpak remote-add $INSTALL_SCOPE --if-not-exists --no-gpg-verify "$REMOTE_NAME" "file://$REPO_PATH"
-flatpak remote-modify $INSTALL_SCOPE --no-gpg-verify "$REMOTE_NAME"
 echo "✓ Repository ready at $REPO_PATH ($INSTALL_SCOPE)"
 
 # Build the Flatpak
@@ -437,6 +440,20 @@ else
 fi
 
 # Install the built Flatpak
+if [ "$SKIP_INSTALL" = true ]; then
+  echo ""
+  echo "[5/5] Skipping install (--skip-install)"
+  echo ""
+  echo "=========================================="
+  echo "✓ Build complete (install skipped)"
+  echo "=========================================="
+  echo ""
+  exit 0
+fi
+
+flatpak remote-add $INSTALL_SCOPE --if-not-exists --no-gpg-verify "$REMOTE_NAME" "file://$REPO_PATH"
+flatpak remote-modify $INSTALL_SCOPE --no-gpg-verify "$REMOTE_NAME"
+
 echo ""
 echo "[5/5] Installing Flatpak..."
 INSTALL_ARGS="-y"
