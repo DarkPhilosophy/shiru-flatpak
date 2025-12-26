@@ -401,9 +401,31 @@ with open(target, "w", encoding="utf-8") as f:
     f.write("\n".join(out) + "\n")
 PY
 
+if command -v rg > /dev/null 2>&1; then
+  RUNTIME="$(rg -m1 '^runtime:' "$MANIFEST" | awk '{print $2}')"
+  RUNTIME_VERSION="$(rg -m1 '^runtime-version:' "$MANIFEST" | awk '{print $2}')"
+  SDK="$(rg -m1 '^sdk:' "$MANIFEST" | awk '{print $2}')"
+else
+  RUNTIME="$(grep -m1 '^runtime:' "$MANIFEST" | awk '{print $2}')"
+  RUNTIME_VERSION="$(grep -m1 '^runtime-version:' "$MANIFEST" | awk '{print $2}')"
+  SDK="$(grep -m1 '^sdk:' "$MANIFEST" | awk '{print $2}')"
+fi
+
+RUNTIME_VERSION="$(printf '%s' "$RUNTIME_VERSION" | tr -d "'\"")"
+ARCH="$(flatpak --default-arch 2>/dev/null || echo x86_64)"
+RUNTIME_ID="${RUNTIME}/${ARCH}/${RUNTIME_VERSION}"
+SDK_ID="${SDK}/${ARCH}/${RUNTIME_VERSION}"
+
+if [ -z "$RUNTIME" ] || [ -z "$RUNTIME_VERSION" ] || [ -z "$SDK" ]; then
+  echo "ERROR: Unable to read runtime/sdk info from $MANIFEST"
+  exit 1
+fi
+
 cat > "$METADATA_FILE" << EOF
 [Application]
 name=${APP_ID}
+runtime=${RUNTIME_ID}
+sdk=${SDK_ID}
 version=${METADATA_VERSION}
 EOF
 
