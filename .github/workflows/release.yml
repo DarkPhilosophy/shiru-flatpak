@@ -44,17 +44,7 @@ jobs:
           set -e
           HTTP_CODE="$(curl -sS -o /tmp/repo-release.json -w "%{http_code}" https://api.github.com/repos/DarkPhilosophy/shiru-flatpak/releases/latest)"
           if [ "$HTTP_CODE" = "200" ]; then
-            python3 - << 'PY'
-            import json
-            import os
-
-            with open("/tmp/repo-release.json", "r", encoding="utf-8") as f:
-                data = json.load(f)
-
-            tag = (data.get("tag_name") or "").strip()
-            with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
-                f.write(f"tag={tag}\n")
-            PY
+            python3 -c $'import json,os\nwith open("/tmp/repo-release.json","r",encoding="utf-8") as f:\n    data=json.load(f)\ntag=(data.get("tag_name") or "").strip()\nwith open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as f:\n    f.write(f"tag={tag}\\n")'
           else
             echo "No releases found (HTTP ${HTTP_CODE})."
             echo "tag=" >> "${GITHUB_OUTPUT}"
@@ -110,42 +100,7 @@ jobs:
           esac
           rm -f "$HEADERS_TMP"
 
-          python3 - << 'PY'
-          import json
-          import os
-
-          with open('.github/release-cache/latest.json', 'r', encoding='utf-8') as f:
-              data = json.load(f)
-
-          latest = data.get('tag_name', '').strip()
-          body = (data.get('body') or '').strip()
-
-          repo_release = os.environ.get('REPO_RELEASE', '').strip()
-          force = os.environ.get('FORCE', 'false').lower() == 'true'
-          no_release = repo_release == ''
-          should_build = force or no_release or (latest and latest != repo_release)
-
-          notes = [
-              '# Shiru Flatpak Release',
-              '',
-              f'Custom message: Repackaged upstream {latest} into Flatpak with automated caching and version-aware updates.',
-              '',
-              'Upstream notes:',
-              body or '(no upstream notes found)',
-              ''
-          ]
-
-          with open('RELEASE_NOTES.md', 'w', encoding='utf-8') as f:
-              f.write('\n'.join(notes))
-
-          print(f'latest={latest}')
-          print(f'repo_release={repo_release or "(none)"}')
-          print(f'should_build={should_build}')
-
-          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as f:
-              f.write(f"tag={latest}\n")
-              f.write(f"should_build={'true' if should_build else 'false'}\n")
-          PY
+          python3 -c $'import json,os\nwith open(".github/release-cache/latest.json","r",encoding="utf-8") as f:\n    data=json.load(f)\nlatest=(data.get("tag_name") or "").strip()\nbody=(data.get("body") or "").strip()\nrepo_release=os.environ.get("REPO_RELEASE","").strip()\nforce=os.environ.get("FORCE","false").lower()=="true"\nno_release=repo_release==""\nshould_build=force or no_release or (latest and latest != repo_release)\nnotes=[\n    "# Shiru Flatpak Release",\n    "",\n    f"Custom message: Repackaged upstream {latest} into Flatpak with automated caching and version-aware updates.",\n    "",\n    "Upstream notes:",\n    body or "(no upstream notes found)",\n    ""\n]\nwith open("RELEASE_NOTES.md","w",encoding="utf-8") as f:\n    f.write("\\n".join(notes))\nprint(f"latest={latest}")\nprint(f"repo_release={repo_release or \"(none)\"}")\nprint(f"should_build={should_build}")\nwith open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as f:\n    f.write(f"tag={latest}\\n")\n    f.write(f\"should_build={'true' if should_build else 'false'}\\n\")'
         env:
           FORCE: ${{ inputs.force }}
           REPO_RELEASE: ${{ steps.repo_release.outputs.tag }}
