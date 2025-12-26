@@ -37,11 +37,22 @@ This repo intentionally **does not** include Shiru source code.
 - Installed Flatpak version is read from Flatpak metadata.
 - If installed version matches the latest tag, the build is skipped (unless `--force-install` or `--update`).
 
+## Resilience features
+- Uses ETag caching to reduce GitHub API calls and avoid rate limits.
+- Falls back to cached release data if GitHub is rate-limited.
+- Asset matching is configurable via `flatpak-build.conf`.
+
 ## Cache behavior
 - Cache root: `~/.cache/shiru-flatpak`
 - Extracted files are cached per version and reused.
 - `.deb` files are deleted after extraction to reduce IO.
 - After a successful build, only the latest version is retained.
+
+## Configuration
+Edit `flatpak-build.conf` to tune asset matching:
+- `DEB_ASSET_REGEX` / `DEB_ARCH_REGEX`
+- `DEB_ASSET_FALLBACKS`
+- `STRICT_ASSET`
 
 ## Files in this repo
 - `.flatpak-manifest.yaml` - Flatpak manifest

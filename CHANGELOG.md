@@ -6,6 +6,7 @@ It does not modify upstream source code.
 
 ## Upstream release v6.4.7
 Custom message: Repackaged for Flatpak with automated caching and version-aware updates.
+Packaging notes: ETag-based release caching, asset fallback matching, and optional strict asset enforcement.
 
 Upstream notes:
 - feat: add window restore button to tray menu

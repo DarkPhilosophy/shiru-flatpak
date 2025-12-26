@@ -18,6 +18,7 @@ MANIFEST="${MANIFEST:-.flatpak-manifest.yaml}"
 CACHE_ROOT="${CACHE_ROOT:-${XDG_CACHE_HOME:-${HOME}/.cache}/shiru-flatpak}"
 DOWNLOAD_DIR="${DOWNLOAD_DIR:-${CACHE_ROOT}/downloads}"
 EXTRACT_CACHE_DIR="${EXTRACT_CACHE_DIR:-${CACHE_ROOT}/extracted}"
+RELEASE_CACHE_DIR="${RELEASE_CACHE_DIR:-${CACHE_ROOT}/release}"
 STAGING_DIR="${STAGING_DIR:-flatpak-staging}"
 REMOTE_NAME="${REMOTE_NAME:-shiru-origin}"
 APP_NAME="${APP_NAME:-Shiru}"
@@ -25,6 +26,8 @@ APP_ID="${APP_ID:-}"
 GITHUB_REPO="${GITHUB_REPO:-RockinChaos/Shiru}"
 DEB_ASSET_REGEX="${DEB_ASSET_REGEX:-\\.deb$}"
 DEB_ARCH_REGEX="${DEB_ARCH_REGEX:-amd64|x86_64|linux}"
+DEB_ASSET_FALLBACKS="${DEB_ASSET_FALLBACKS:-linux,amd64,x86_64}"
+STRICT_ASSET="${STRICT_ASSET:-false}"
 
 INSTALL_SCOPE="--user"
 CLEAN=false
@@ -45,13 +48,16 @@ if [ -z "$APP_ID" ]; then
 fi
 
 normalize_version() {
-  printf '%s' "${1#v}"
+  printf '%s' "$1" | sed -E 's/^[^0-9]*//; s/[+].*$//'
 }
 
 version_lt() {
   local a b
   a="$(normalize_version "$1")"
   b="$(normalize_version "$2")"
+  if [ -z "$a" ] || [ -z "$b" ]; then
+    return 1
+  fi
   if [ "$a" = "$b" ]; then
     return 1
   fi
@@ -122,16 +128,68 @@ case "$EXTRACT_CACHE_DIR" in
   /*) ;;
   *) EXTRACT_CACHE_DIR="${SCRIPT_DIR}/${EXTRACT_CACHE_DIR}" ;;
 esac
+case "$RELEASE_CACHE_DIR" in
+  /*) ;;
+  *) RELEASE_CACHE_DIR="${SCRIPT_DIR}/${RELEASE_CACHE_DIR}" ;;
+esac
 case "$STAGING_DIR" in
   /*) ;;
   *) STAGING_DIR="${SCRIPT_DIR}/${STAGING_DIR}" ;;
 esac
 
-mkdir -p "$DOWNLOAD_DIR" "$EXTRACT_CACHE_DIR"
+mkdir -p "$DOWNLOAD_DIR" "$EXTRACT_CACHE_DIR" "$RELEASE_CACHE_DIR"
 mkdir -p "$CACHE_ROOT"
 
 RELEASE_URL="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
-RELEASE_INFO="$(curl -fsSL "$RELEASE_URL" | python3 -c '
+RELEASE_JSON="${RELEASE_CACHE_DIR}/latest.json"
+RELEASE_ETAG="${RELEASE_CACHE_DIR}/etag.txt"
+HEADERS_TMP="$(mktemp)"
+BODY_TMP="$(mktemp)"
+ETAG_HEADER=""
+if [ -f "$RELEASE_ETAG" ]; then
+  ETAG_HEADER="$(cat "$RELEASE_ETAG")"
+fi
+
+HTTP_CODE="$(curl -sS -D "$HEADERS_TMP" -o "$BODY_TMP" -H "If-None-Match: ${ETAG_HEADER}" "$RELEASE_URL" -w "%{http_code}")"
+
+case "$HTTP_CODE" in
+  200)
+    mv "$BODY_TMP" "$RELEASE_JSON"
+    awk 'BEGIN{IGNORECASE=1} /^etag:/ {print $2}' "$HEADERS_TMP" | tr -d '\r' > "$RELEASE_ETAG"
+    ;;
+  304)
+    if [ -f "$RELEASE_JSON" ]; then
+      rm -f "$BODY_TMP"
+    else
+      echo "ERROR: Received 304 but no cached release data."
+      rm -f "$BODY_TMP"
+      exit 1
+    fi
+    ;;
+  403|429)
+    if [ -f "$RELEASE_JSON" ]; then
+      echo "WARNING: GitHub API rate-limited; using cached release data."
+      rm -f "$BODY_TMP"
+    else
+      echo "ERROR: GitHub API rate-limited and no cached release data."
+      rm -f "$BODY_TMP"
+      exit 1
+    fi
+    ;;
+  *)
+    if [ -f "$RELEASE_JSON" ]; then
+      echo "WARNING: GitHub API error (${HTTP_CODE}); using cached release data."
+      rm -f "$BODY_TMP"
+    else
+      echo "ERROR: Unable to fetch release data (HTTP ${HTTP_CODE})."
+      rm -f "$BODY_TMP"
+      exit 1
+    fi
+    ;;
+esac
+rm -f "$HEADERS_TMP"
+
+RELEASE_INFO="$(cat "$RELEASE_JSON" | python3 -c '
 import json
 import re
 import sys
@@ -140,6 +198,7 @@ data = json.load(sys.stdin)
 tag = data.get("tag_name") or ""
 asset_regex = re.compile(sys.argv[1])
 arch_regex = re.compile(sys.argv[2])
+fallbacks = [f.strip() for f in sys.argv[3].split(",") if f.strip()]
 
 assets = data.get("assets") or []
 match = None
@@ -160,21 +219,39 @@ if match is None:
             match = (name, url)
             break
 
+if match is None and fallbacks:
+    for asset in assets:
+        name = asset.get("name", "")
+        url = asset.get("browser_download_url", "")
+        if not asset_regex.search(name):
+            continue
+        lower = name.lower()
+        if any(f in lower for f in fallbacks):
+            match = (name, url)
+            break
+
 if not tag or match is None:
     sys.exit(1)
 
 print(f"{tag}|{match[0]}|{match[1]}")
-' "$DEB_ASSET_REGEX" "$DEB_ARCH_REGEX")"
+' "$DEB_ASSET_REGEX" "$DEB_ARCH_REGEX" "$DEB_ASSET_FALLBACKS")"
 
 if [ -z "$RELEASE_INFO" ]; then
-  echo "ERROR: Unable to resolve latest release for $GITHUB_REPO"
-  exit 1
+  if [ "$STRICT_ASSET" = "true" ]; then
+    echo "ERROR: Unable to resolve latest release for $GITHUB_REPO"
+    exit 1
+  fi
+  echo "WARNING: No matching .deb asset found; skipping."
+  exit 0
 fi
 
 RELEASE_TAG="$(printf '%s' "$RELEASE_INFO" | awk -F'|' '{print $1}')"
 ASSET_NAME="$(printf '%s' "$RELEASE_INFO" | awk -F'|' '{print $2}')"
 ASSET_URL="$(printf '%s' "$RELEASE_INFO" | awk -F'|' '{print $3}')"
 METADATA_VERSION="$(normalize_version "$RELEASE_TAG")"
+if [ -z "$METADATA_VERSION" ]; then
+  echo "WARNING: Unable to normalize version from tag ${RELEASE_TAG}"
+fi
 
 LAST_BUILT_FILE="${CACHE_ROOT}/last-built-version.txt"
 DEB_FILE="${DOWNLOAD_DIR}/${ASSET_NAME}"
@@ -211,7 +288,9 @@ if [ -n "$LAST_BUILT" ]; then
 fi
 
 NEED_UPDATE=false
-if [ "$INSTALLED" = false ]; then
+if [ -z "$METADATA_VERSION" ]; then
+  NEED_UPDATE=true
+elif [ "$INSTALLED" = false ]; then
   NEED_UPDATE=true
 elif [ -z "$INSTALLED_VERSION" ]; then
   NEED_UPDATE=true
