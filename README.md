@@ -22,6 +22,11 @@ This repo intentionally **does not** include Shiru source code.
 ./flatpak-build.sh --clean
 ```
 
+### Skip install (CI or build-only)
+```bash
+./flatpak-build.sh --clean --skip-install
+```
+
 ### Force reinstall
 ```bash
 ./flatpak-build.sh --clean --force-install
@@ -36,6 +41,13 @@ This repo intentionally **does not** include Shiru source code.
 - Latest upstream tag is read from GitHub releases.
 - Installed Flatpak version is read from Flatpak metadata.
 - If installed version matches the latest tag, the build is skipped (unless `--force-install` or `--update`).
+- When `--force-install` is used on a matching version, the script logs a warning and reinstall proceeds.
+
+## Automation (GitHub Actions)
+- The workflow compares the latest upstream tag with this repo's latest release tag.
+- If upstream is newer (or no release exists yet), it builds and publishes a new release.
+- CI builds run with `--skip-install` to avoid `flatpak remote-add` on empty repos.
+- The workflow installs the Flatpak runtime/sdk before building.
 
 ## Resilience features
 - Uses ETag caching to reduce GitHub API calls and avoid rate limits.
