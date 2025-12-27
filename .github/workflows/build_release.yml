@@ -41,6 +41,18 @@ jobs:
         run: |
           flatpak install --user -y flathub org.freedesktop.Platform//25.08 org.freedesktop.Sdk//25.08
 
+      - name: Check repo release
+        id: repo_release
+        run: |
+          set -e
+          HTTP_CODE="$(curl -sS -o /tmp/repo-release.json -w "%{http_code}" https://api.github.com/repos/DarkPhilosophy/shiru-flatpak/releases/latest)"
+          if [ "$HTTP_CODE" = "200" ]; then
+            python3 -c $'import json,os\nwith open(\"/tmp/repo-release.json\",\"r\",encoding=\"utf-8\") as f:\n    data=json.load(f)\ntag=(data.get(\"tag_name\") or \"\").strip()\nwith open(os.environ[\"GITHUB_OUTPUT\"],\"a\",encoding=\"utf-8\") as f:\n    f.write(\"tag={}\\n\".format(tag))'
+          else
+            echo "No releases found (HTTP ${HTTP_CODE})."
+            echo "tag=" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Check upstream version
         id: check
         run: |
@@ -103,9 +115,8 @@ jobs:
           body=(data.get("body") or "").strip()
           force=os.environ.get("FORCE","false").lower()=="true"
 
-          upstream_file=Path("UPSTREAM_VERSION")
-          recorded=upstream_file.read_text(encoding="utf-8").strip() if upstream_file.exists() else ""
-          should_build=force or (not recorded) or (latest and latest != recorded)
+          repo_release=os.environ.get("REPO_RELEASE","").strip()
+          should_build=force or (not repo_release) or (latest and latest != repo_release)
 
           version_file=Path("VERSION")
           project_version=version_file.read_text(encoding="utf-8").strip() if version_file.exists() else "unknown"
@@ -131,6 +142,7 @@ jobs:
               "",
               "Project version: {}".format(project_version),
               "Upstream version: {}".format(latest),
+              "Repo release: {}".format(repo_release or "(none)"),
               "App ID: {}".format(app_id or "unknown"),
               "Runtime: {}//{}".format(runtime or "unknown", runtime_version or "unknown"),
               "SDK: {}//{}".format(sdk or "unknown", runtime_version or "unknown"),
@@ -149,7 +161,7 @@ jobs:
               f.write("\n".join(notes))
 
           print("latest={}".format(latest))
-          print("recorded_upstream={}".format(recorded or "(none)"))
+          print("repo_release={}".format(repo_release or "(none)"))
           print("should_build={}".format(should_build))
 
           with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as f:
@@ -158,6 +170,7 @@ jobs:
           PY
         env:
           FORCE: ${{ inputs.force }}
+          REPO_RELEASE: ${{ steps.repo_release.outputs.tag }}
       - name: Stop if no update
         if: steps.check.outputs.should_build != 'true'
         run: echo "No new upstream version; skipping build."
@@ -174,22 +187,6 @@ jobs:
         run: |
           flatpak build-bundle "${GITHUB_WORKSPACE}/flatpak-repo" shiru.flatpak com.github.rockinchaos.shiru
           sha256sum shiru.flatpak > shiru.flatpak.sha256
-
-      - name: Update UPSTREAM_VERSION
-        if: steps.check.outputs.should_build == 'true'
-        run: |
-          echo "${{ steps.check.outputs.tag }}" > UPSTREAM_VERSION
-          git config user.name "shiru-flatpak-bot"
-          git config user.email "shiru-flatpak-bot@users.noreply.github.com"
-          git add UPSTREAM_VERSION
-          if git diff --cached --quiet; then
-            echo "UPSTREAM_VERSION unchanged; skipping commit."
-            exit 0
-          fi
-          git commit -m "chore: bump UPSTREAM_VERSION to ${{ steps.check.outputs.tag }}"
-          git fetch origin main
-          git rebase origin/main
-          git push
 
       - name: Create GitHub release
         if: steps.check.outputs.should_build == 'true'
