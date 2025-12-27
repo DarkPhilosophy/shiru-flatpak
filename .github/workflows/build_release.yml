@@ -198,3 +198,19 @@ jobs:
           files: |
             shiru.flatpak
             shiru.flatpak.sha256
+
+      - name: Update UPSTREAM_VERSION
+        if: steps.check.outputs.should_build == 'true'
+        run: |
+          echo "${{ steps.check.outputs.tag }}" > UPSTREAM_VERSION
+          git config user.name "shiru-flatpak-bot"
+          git config user.email "shiru-flatpak-bot@users.noreply.github.com"
+          git add UPSTREAM_VERSION
+          if git diff --cached --quiet; then
+            echo "UPSTREAM_VERSION unchanged; skipping commit."
+            exit 0
+          fi
+          git commit -m "chore: bump UPSTREAM_VERSION to ${{ steps.check.outputs.tag }}"
+          git fetch origin main
+          git rebase origin/main
+          git push
