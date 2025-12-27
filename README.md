@@ -1,7 +1,7 @@
 # shiru-flatpak
 
 [![Build Status](https://github.com/DarkPhilosophy/shiru-flatpak/actions/workflows/build_release.yml/badge.svg)](https://github.com/DarkPhilosophy/shiru-flatpak/actions/workflows/build_release.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
 
 Flatpak repackaging for the Shiru desktop app using the official upstream `.deb` releases.
 This repo intentionally **does not** include Shiru source code.
