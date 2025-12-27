@@ -182,7 +182,13 @@ jobs:
           git config user.name "shiru-flatpak-bot"
           git config user.email "shiru-flatpak-bot@users.noreply.github.com"
           git add UPSTREAM_VERSION
-          git commit -m "chore: bump UPSTREAM_VERSION to ${{ steps.check.outputs.tag }}" || true
+          if git diff --cached --quiet; then
+            echo "UPSTREAM_VERSION unchanged; skipping commit."
+            exit 0
+          fi
+          git commit -m "chore: bump UPSTREAM_VERSION to ${{ steps.check.outputs.tag }}"
+          git fetch origin main
+          git rebase origin/main
           git push
 
       - name: Create GitHub release
