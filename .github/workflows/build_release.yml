@@ -1,6 +1,6 @@
 name: Build and Release
 
-on:
+"on":
   workflow_dispatch:
     inputs:
       force:
