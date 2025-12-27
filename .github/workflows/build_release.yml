@@ -1,6 +1,6 @@
 name: Build and Release
 
-"on":
+on:
   workflow_dispatch:
     inputs:
       force:
@@ -92,70 +92,70 @@ jobs:
           rm -f "$HEADERS_TMP"
 
           python3 - <<'PY'
-import json
-import os
-from pathlib import Path
+          import json
+          import os
+          from pathlib import Path
 
-with open(".github/release-cache/latest.json","r",encoding="utf-8") as f:
-    data=json.load(f)
+          with open(".github/release-cache/latest.json","r",encoding="utf-8") as f:
+              data=json.load(f)
 
-latest=(data.get("tag_name") or "").strip()
-body=(data.get("body") or "").strip()
-force=os.environ.get("FORCE","false").lower()=="true"
+          latest=(data.get("tag_name") or "").strip()
+          body=(data.get("body") or "").strip()
+          force=os.environ.get("FORCE","false").lower()=="true"
 
-upstream_file=Path("UPSTREAM_VERSION")
-recorded=upstream_file.read_text(encoding="utf-8").strip() if upstream_file.exists() else ""
-should_build=force or (not recorded) or (latest and latest != recorded)
+          upstream_file=Path("UPSTREAM_VERSION")
+          recorded=upstream_file.read_text(encoding="utf-8").strip() if upstream_file.exists() else ""
+          should_build=force or (not recorded) or (latest and latest != recorded)
 
-version_file=Path("VERSION")
-project_version=version_file.read_text(encoding="utf-8").strip() if version_file.exists() else "unknown"
+          version_file=Path("VERSION")
+          project_version=version_file.read_text(encoding="utf-8").strip() if version_file.exists() else "unknown"
 
-manifest_file=Path(".flatpak-manifest.yaml")
-manifest_text=manifest_file.read_text(encoding="utf-8").splitlines() if manifest_file.exists() else []
-app_id=""
-runtime=""
-runtime_version=""
-sdk=""
-for line in manifest_text:
-    if line.startswith("app-id:"):
-        app_id=line.split(":",1)[1].strip()
-    elif line.startswith("runtime:"):
-        runtime=line.split(":",1)[1].strip()
-    elif line.startswith("runtime-version:"):
-        runtime_version=line.split(":",1)[1].strip().strip("\"").strip("'")
-    elif line.startswith("sdk:"):
-        sdk=line.split(":",1)[1].strip()
+          manifest_file=Path(".flatpak-manifest.yaml")
+          manifest_text=manifest_file.read_text(encoding="utf-8").splitlines() if manifest_file.exists() else []
+          app_id=""
+          runtime=""
+          runtime_version=""
+          sdk=""
+          for line in manifest_text:
+              if line.startswith("app-id:"):
+                  app_id=line.split(":",1)[1].strip()
+              elif line.startswith("runtime:"):
+                  runtime=line.split(":",1)[1].strip()
+              elif line.startswith("runtime-version:"):
+                  runtime_version=line.split(":",1)[1].strip().strip("\"").strip("'")
+              elif line.startswith("sdk:"):
+                  sdk=line.split(":",1)[1].strip()
 
-notes=[
-    "# Shiru Flatpak Release",
-    "",
-    "Project version: {}".format(project_version),
-    "Upstream version: {}".format(latest),
-    "App ID: {}".format(app_id or "unknown"),
-    "Runtime: {}//{}".format(runtime or "unknown", runtime_version or "unknown"),
-    "SDK: {}//{}".format(sdk or "unknown", runtime_version or "unknown"),
-    "",
-    "Packaging details:",
-    "- Repackaged upstream .deb into Flatpak.",
-    "- Build uses cached extraction and version-aware update logic.",
-    "- Install step is skipped in CI (build-only).",
-    "",
-    "Upstream notes:",
-    body or "(no upstream notes found)",
-    ""
-]
+          notes=[
+              "# Shiru Flatpak Release",
+              "",
+              "Project version: {}".format(project_version),
+              "Upstream version: {}".format(latest),
+              "App ID: {}".format(app_id or "unknown"),
+              "Runtime: {}//{}".format(runtime or "unknown", runtime_version or "unknown"),
+              "SDK: {}//{}".format(sdk or "unknown", runtime_version or "unknown"),
+              "",
+              "Packaging details:",
+              "- Repackaged upstream .deb into Flatpak.",
+              "- Build uses cached extraction and version-aware update logic.",
+              "- Install step is skipped in CI (build-only).",
+              "",
+              "Upstream notes:",
+              body or "(no upstream notes found)",
+              ""
+          ]
 
-with open("RELEASE_NOTES.md","w",encoding="utf-8") as f:
-    f.write("\n".join(notes))
+          with open("RELEASE_NOTES.md","w",encoding="utf-8") as f:
+              f.write("\n".join(notes))
 
-print("latest={}".format(latest))
-print("recorded_upstream={}".format(recorded or "(none)"))
-print("should_build={}".format(should_build))
+          print("latest={}".format(latest))
+          print("recorded_upstream={}".format(recorded or "(none)"))
+          print("should_build={}".format(should_build))
 
-with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as f:
-    f.write("tag={}\n".format(latest))
-    f.write("should_build={}\n".format("true" if should_build else "false"))
-PY
+          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as f:
+              f.write("tag={}\n".format(latest))
+              f.write("should_build={}\n".format("true" if should_build else "false"))
+          PY
         env:
           FORCE: ${{ inputs.force }}
       - name: Stop if no update
