@@ -44,7 +44,7 @@ This repo intentionally **does not** include Shiru source code.
 - When `--force-install` is used on a matching version, the script logs a warning and reinstall proceeds.
 
 ## Automation (GitHub Actions)
-- The workflow compares the latest upstream tag with this repo's latest release tag.
+- The workflow compares the latest upstream tag with `UPSTREAM_VERSION`.
 - If upstream is newer (or no release exists yet), it builds and publishes a new release.
 - CI builds run with `--skip-install` to avoid `flatpak remote-add` on empty repos.
 - The workflow installs the Flatpak runtime/sdk before building.
@@ -71,7 +71,8 @@ Edit `flatpak-build.conf` to tune asset matching:
 - `flatpak-build.sh` - build + update script
 - `flatpak-build.conf` - configuration
 - `com.github.rockinchaos.shiru.metainfo.xml` - metadata
-- `VERSION` - last upstream version handled by this repo
+- `VERSION` - project version for this repo
+- `UPSTREAM_VERSION` - last upstream Shiru version handled by this repo
 
 ## Upstream
 - Shiru releases: https://github.com/RockinChaos/Shiru/releases

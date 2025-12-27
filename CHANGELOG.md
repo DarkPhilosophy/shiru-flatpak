@@ -4,6 +4,12 @@
 This repository packages the official Shiru `.deb` releases into Flatpak for convenience.
 It does not modify upstream source code.
 
+## v1.0.1
+- Move Flatpak runtime and SDK to 25.08.
+- Track upstream releases in `UPSTREAM_VERSION` while keeping project versioning separate.
+- Update workflow naming and release logic to compare against `UPSTREAM_VERSION`.
+- Improve build script handling for runtime changes and repo URL updates.
+
 ## Upstream release v6.4.7
 Custom message: Repackaged for Flatpak with automated caching and version-aware updates.
 Packaging notes: ETag-based release caching, asset fallback matching, and optional strict asset enforcement.

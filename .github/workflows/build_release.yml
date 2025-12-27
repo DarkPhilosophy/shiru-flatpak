@@ -41,18 +41,6 @@ jobs:
         run: |
           flatpak install --user -y flathub org.freedesktop.Platform//25.08 org.freedesktop.Sdk//25.08
 
-      - name: Check repo release
-        id: repo_release
-        run: |
-          set -e
-          HTTP_CODE="$(curl -sS -o /tmp/repo-release.json -w "%{http_code}" https://api.github.com/repos/DarkPhilosophy/shiru-flatpak/releases/latest)"
-          if [ "$HTTP_CODE" = "200" ]; then
-            python3 -c $'import json,os\nwith open("/tmp/repo-release.json","r",encoding="utf-8") as f:\n    data=json.load(f)\ntag=(data.get("tag_name") or "").strip()\nwith open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as f:\n    f.write(f"tag={tag}\\n")'
-          else
-            echo "No releases found (HTTP ${HTTP_CODE})."
-            echo "tag=" >> "${GITHUB_OUTPUT}"
-          fi
-
       - name: Check upstream version
         id: check
         run: |
@@ -103,10 +91,9 @@ jobs:
           esac
           rm -f "$HEADERS_TMP"
 
-          python3 -c $'import json,os\nwith open(".github/release-cache/latest.json","r",encoding="utf-8") as f:\n    data=json.load(f)\nlatest=(data.get("tag_name") or "").strip()\nbody=(data.get("body") or "").strip()\nrepo_release=os.environ.get("REPO_RELEASE","").strip()\nforce=os.environ.get("FORCE","false").lower()=="true"\nno_release=repo_release==""\nshould_build=force or no_release or (latest and latest != repo_release)\nnotes=[\n    "# Shiru Flatpak Release",\n    "",\n    "Custom message: Repackaged upstream {} into Flatpak with automated caching and version-aware updates.".format(latest),\n    "",\n    "Upstream notes:",\n    body or "(no upstream notes found)",\n    ""\n]\nwith open("RELEASE_NOTES.md","w",encoding="utf-8") as f:\n    f.write("\\n".join(notes))\nprint("latest={}".format(latest))\nprint("repo_release={}".format(repo_release or "(none)"))\nprint("should_build={}".format(should_build))\nwith open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as f:\n    f.write("tag={}\\n".format(latest))\n    f.write("should_build={}\\n".format("true" if should_build else "false"))'
+          python3 -c $'import json,os\nfrom pathlib import Path\nwith open(".github/release-cache/latest.json","r",encoding="utf-8") as f:\n    data=json.load(f)\nlatest=(data.get("tag_name") or "").strip()\nbody=(data.get("body") or "").strip()\nforce=os.environ.get("FORCE","false").lower()=="true"\nupstream_file=Path("UPSTREAM_VERSION")\nrecorded=upstream_file.read_text(encoding="utf-8").strip() if upstream_file.exists() else ""\nshould_build=force or (not recorded) or (latest and latest != recorded)\nnotes=[\n    "# Shiru Flatpak Release",\n    "",\n    "Custom message: Repackaged upstream {} into Flatpak with automated caching and version-aware updates.".format(latest),\n    "",\n    "Upstream notes:",\n    body or "(no upstream notes found)",\n    ""\n]\nwith open("RELEASE_NOTES.md","w",encoding="utf-8") as f:\n    f.write("\\n".join(notes))\nprint("latest={}".format(latest))\nprint("recorded_upstream={}".format(recorded or "(none)"))\nprint("should_build={}".format(should_build))\nwith open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as f:\n    f.write("tag={}\\n".format(latest))\n    f.write("should_build={}\\n".format("true" if should_build else "false"))'
         env:
           FORCE: ${{ inputs.force }}
-          REPO_RELEASE: ${{ steps.repo_release.outputs.tag }}
 
       - name: Stop if no update
         if: steps.check.outputs.should_build != 'true'
@@ -125,14 +112,14 @@ jobs:
           flatpak build-bundle "${GITHUB_WORKSPACE}/flatpak-repo" shiru.flatpak com.github.rockinchaos.shiru
           sha256sum shiru.flatpak > shiru.flatpak.sha256
 
-      - name: Update VERSION
+      - name: Update UPSTREAM_VERSION
         if: steps.check.outputs.should_build == 'true'
         run: |
-          echo "${{ steps.check.outputs.tag }}" > VERSION
+          echo "${{ steps.check.outputs.tag }}" > UPSTREAM_VERSION
           git config user.name "shiru-flatpak-bot"
           git config user.email "shiru-flatpak-bot@users.noreply.github.com"
-          git add VERSION
-          git commit -m "chore: bump VERSION to ${{ steps.check.outputs.tag }}" || true
+          git add UPSTREAM_VERSION
+          git commit -m "chore: bump UPSTREAM_VERSION to ${{ steps.check.outputs.tag }}" || true
           git push
 
       - name: Create GitHub release
