@@ -92,13 +92,52 @@ while [[ $# -gt 0 ]]; do
       INSTALL_SCOPE="--system"
       shift
       ;;
+    --check-upstream)
+      CHECK_UPSTREAM=true
+      shift
+      ;;
     *)
       echo "Unknown option: $1"
-      echo "Usage: $0 [--repo REPO_PATH] [--clean] [--update] [--force-install] [--skip-install] [--system]"
+      echo "Usage: $0 [--repo REPO_PATH] [--clean] [--update] [--force-install] [--skip-install] [--system] [--check-upstream]"
       exit 1
       ;;
   esac
 done
+
+if [ "$CHECK_UPSTREAM" = true ]; then
+  echo "[0/5] Checking upstream version..."
+  if [ -f ".scripts/check_upstream.py" ]; then
+    # Run the python script and capture its exit code/behavior
+    # We force the script to use a temporary output file if GITHUB_OUTPUT isn't set, 
+    # to parse the decision locally.
+    TEMP_OUTPUT="${GITHUB_OUTPUT:-.flatpak-build-output}"
+    export GITHUB_OUTPUT="$TEMP_OUTPUT"
+    
+    python3 .scripts/check_upstream.py
+    
+    # Read variables from the output file
+    if [ -f "$TEMP_OUTPUT" ]; then
+      SHOULD_BUILD=$(grep "should_build=" "$TEMP_OUTPUT" | cut -d= -f2)
+      TAG=$(grep "tag=" "$TEMP_OUTPUT" | cut -d= -f2)
+      
+      # Clean up if we created a temp file
+      if [ "$TEMP_OUTPUT" = ".flatpak-build-output" ]; then
+        rm "$TEMP_OUTPUT"
+      fi
+      
+      if [ "$SHOULD_BUILD" = "false" ]; then
+        echo "Upstream check indicates no update needed."
+        exit 0
+      fi
+      
+      echo "Update detected: $TAG"
+      # Set FORCE_UPDATE to ensure we proceed with the build logic below
+      FORCE_UPDATE=true
+    fi
+  else
+    echo "WARNING: .scripts/check_upstream.py not found. Skipping check."
+  fi
+fi
 
 echo "=========================================="
 echo "${APP_NAME} Flatpak Build"
@@ -194,52 +233,7 @@ case "$HTTP_CODE" in
 esac
 rm -f "$HEADERS_TMP"
 
-RELEASE_INFO="$(cat "$RELEASE_JSON" | python3 -c '
-import json
-import re
-import sys
-
-data = json.load(sys.stdin)
-tag = data.get("tag_name") or ""
-asset_regex = re.compile(sys.argv[1])
-arch_regex = re.compile(sys.argv[2])
-fallbacks = [f.strip() for f in sys.argv[3].split(",") if f.strip()]
-
-assets = data.get("assets") or []
-match = None
-for asset in assets:
-    name = asset.get("name", "")
-    url = asset.get("browser_download_url", "")
-    if not asset_regex.search(name):
-        continue
-    if arch_regex.search(name):
-        match = (name, url)
-        break
-
-if match is None:
-    for asset in assets:
-        name = asset.get("name", "")
-        url = asset.get("browser_download_url", "")
-        if asset_regex.search(name):
-            match = (name, url)
-            break
-
-if match is None and fallbacks:
-    for asset in assets:
-        name = asset.get("name", "")
-        url = asset.get("browser_download_url", "")
-        if not asset_regex.search(name):
-            continue
-        lower = name.lower()
-        if any(f in lower for f in fallbacks):
-            match = (name, url)
-            break
-
-if not tag or match is None:
-    sys.exit(1)
-
-print(f"{tag}|{match[0]}|{match[1]}")
-' "$DEB_ASSET_REGEX" "$DEB_ARCH_REGEX" "$DEB_ASSET_FALLBACKS")"
+RELEASE_INFO="$(cat "$RELEASE_JSON" | python3 .scripts/resolve_asset.py "$DEB_ASSET_REGEX" "$DEB_ARCH_REGEX" "$DEB_ASSET_FALLBACKS")"
 
 if [ -z "$RELEASE_INFO" ]; then
   if [ "$STRICT_ASSET" = "true" ]; then
@@ -410,7 +404,7 @@ fi
 
 rm -rf "$STAGING_DIR"
 mkdir -p "$CURRENT_EXTRACT_DIR"
-if ! cp -al "$EXTRACT_VERSION_DIR"/. "$CURRENT_EXTRACT_DIR"/; then
+if ! cp -al "$EXTRACT_VERSION_DIR"/. "$CURRENT_EXTRACT_DIR"/ >/dev/null 2>&1; then
   cp -a "$EXTRACT_VERSION_DIR"/. "$CURRENT_EXTRACT_DIR"/
 fi
 
@@ -431,29 +425,7 @@ fi
 # Generate manifest with version metadata for installed version reporting
 MANIFEST_FOR_BUILD="${SCRIPT_DIR}/.flatpak-manifest.generated.yaml"
 METADATA_FILE="${SCRIPT_DIR}/.flatpak-metadata.ini"
-python3 - "$MANIFEST" "$MANIFEST_FOR_BUILD" "$METADATA_FILE" << 'PY'
-import sys
-
-source = sys.argv[1]
-target = sys.argv[2]
-metadata_file = sys.argv[3]
-
-with open(source, "r", encoding="utf-8") as f:
-    lines = f.read().splitlines()
-
-out = []
-inserted = False
-for line in lines:
-    if line.strip().startswith("metadata:"):
-        continue
-    out.append(line)
-    if not inserted and line.strip().startswith("command:"):
-        out.append(f"metadata: {metadata_file}")
-        inserted = True
-
-with open(target, "w", encoding="utf-8") as f:
-    f.write("\n".join(out) + "\n")
-PY
+python3 .scripts/generate_manifest.py "$MANIFEST" "$MANIFEST_FOR_BUILD" "$METADATA_FILE"
 
 cat > "$METADATA_FILE" << EOF
 [Application]

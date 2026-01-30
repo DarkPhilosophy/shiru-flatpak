@@ -41,176 +41,42 @@ jobs:
         run: |
           flatpak install --user -y flathub org.freedesktop.Platform//25.08 org.freedesktop.Sdk//25.08
 
-      - name: Check repo release
-        id: repo_release
-        run: |
-          set -e
-          HTTP_CODE="$(curl -sS -o /tmp/repo-release.json -w "%{http_code}" https://api.github.com/repos/DarkPhilosophy/shiru-flatpak/releases/latest)"
-          if [ "$HTTP_CODE" = "200" ]; then
-            python3 -c $'import json,os\nwith open(\"/tmp/repo-release.json\",\"r\",encoding=\"utf-8\") as f:\n    data=json.load(f)\ntag=(data.get(\"tag_name\") or \"\").strip()\nwith open(os.environ[\"GITHUB_OUTPUT\"],\"a\",encoding=\"utf-8\") as f:\n    f.write(\"tag={}\\n\".format(tag))'
-          else
-            echo "No releases found (HTTP ${HTTP_CODE})."
-            echo "tag=" >> "${GITHUB_OUTPUT}"
-          fi
-
-      - name: Check upstream version
-        id: check
-        run: |
-          set -e
-          mkdir -p .github/release-cache
-          RELEASE_JSON=".github/release-cache/latest.json"
-          RELEASE_ETAG=".github/release-cache/etag.txt"
-          HEADERS_TMP="$(mktemp)"
-          BODY_TMP="$(mktemp)"
-          ETAG_HEADER=""
-          if [ -f "$RELEASE_ETAG" ]; then
-            ETAG_HEADER="$(cat "$RELEASE_ETAG")"
-          fi
-
-          HTTP_CODE="$(curl -sS -D "$HEADERS_TMP" -o "$BODY_TMP" -H "If-None-Match: ${ETAG_HEADER}" https://api.github.com/repos/RockinChaos/Shiru/releases/latest -w "%{http_code}")"
-
-          case "$HTTP_CODE" in
-            200)
-              mv "$BODY_TMP" "$RELEASE_JSON"
-              awk 'BEGIN{IGNORECASE=1} /^etag:/ {print $2}' "$HEADERS_TMP" | tr -d '\r' > "$RELEASE_ETAG"
-              ;;
-            304)
-              if [ -f "$RELEASE_JSON" ]; then
-                rm -f "$BODY_TMP"
-              else
-                echo "No cached release data for 304 response."
-                exit 1
-              fi
-              ;;
-            403|429)
-              if [ -f "$RELEASE_JSON" ]; then
-                echo "Rate-limited; using cached release data."
-                rm -f "$BODY_TMP"
-              else
-                echo "Rate-limited and no cached data."
-                exit 1
-              fi
-              ;;
-            *)
-              if [ -f "$RELEASE_JSON" ]; then
-                echo "API error ${HTTP_CODE}; using cached release data."
-                rm -f "$BODY_TMP"
-              else
-                echo "Failed to fetch release data (HTTP ${HTTP_CODE})."
-                exit 1
-              fi
-              ;;
-          esac
-          rm -f "$HEADERS_TMP"
-
-          python3 - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          with open(".github/release-cache/latest.json","r",encoding="utf-8") as f:
-              data=json.load(f)
-
-          latest=(data.get("tag_name") or "").strip()
-          body=(data.get("body") or "").strip()
-          force=os.environ.get("FORCE","false").lower()=="true"
-
-          repo_release=os.environ.get("REPO_RELEASE","").strip()
-          should_build=force or (not repo_release) or (latest and latest != repo_release)
-
-          version_file=Path("VERSION")
-          project_version=version_file.read_text(encoding="utf-8").strip() if version_file.exists() else "unknown"
-
-          manifest_file=Path(".flatpak-manifest.yaml")
-          manifest_text=manifest_file.read_text(encoding="utf-8").splitlines() if manifest_file.exists() else []
-          app_id=""
-          runtime=""
-          runtime_version=""
-          sdk=""
-          for line in manifest_text:
-              if line.startswith("app-id:"):
-                  app_id=line.split(":",1)[1].strip()
-              elif line.startswith("runtime:"):
-                  runtime=line.split(":",1)[1].strip()
-              elif line.startswith("runtime-version:"):
-                  runtime_version=line.split(":",1)[1].strip().strip("\"").strip("'")
-              elif line.startswith("sdk:"):
-                  sdk=line.split(":",1)[1].strip()
-
-          notes=[
-              "# Shiru Flatpak Release",
-              "",
-              "Project version: {}".format(project_version),
-              "Upstream version: {}".format(latest),
-              "Repo release: {}".format(repo_release or "(none)"),
-              "App ID: {}".format(app_id or "unknown"),
-              "Runtime: {}//{}".format(runtime or "unknown", runtime_version or "unknown"),
-              "SDK: {}//{}".format(sdk or "unknown", runtime_version or "unknown"),
-              "",
-              "Packaging details:",
-              "- Repackaged upstream .deb into Flatpak.",
-              "- Build uses cached extraction and version-aware update logic.",
-              "- Install step is skipped in CI (build-only).",
-              "",
-              "Upstream notes:",
-              body or "(no upstream notes found)",
-              ""
-          ]
-
-          with open("RELEASE_NOTES.md","w",encoding="utf-8") as f:
-              f.write("\n".join(notes))
-
-          print("latest={}".format(latest))
-          print("repo_release={}".format(repo_release or "(none)"))
-          print("should_build={}".format(should_build))
-
-          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as f:
-              f.write("tag={}\n".format(latest))
-              f.write("should_build={}\n".format("true" if should_build else "false"))
-          PY
+      - name: Build Flatpak (Auto-Check)
+        id: build
         env:
           FORCE: ${{ inputs.force }}
-          REPO_RELEASE: ${{ steps.repo_release.outputs.tag }}
-      - name: Stop if no update
-        if: steps.check.outputs.should_build != 'true'
-        run: echo "No new upstream version; skipping build."
-
-      - name: Build Flatpak
-        if: steps.check.outputs.should_build == 'true'
-        env:
           CACHE_ROOT: ${{ github.workspace }}/.cache/shiru-flatpak
         run: |
-          ./flatpak-build.sh --clean --update --skip-install --repo "${GITHUB_WORKSPACE}/flatpak-repo"
+          ./flatpak-build.sh --check-upstream --clean --skip-install --repo "${GITHUB_WORKSPACE}/flatpak-repo"
 
       - name: Create bundle
-        if: steps.check.outputs.should_build == 'true'
+        if: steps.build.outputs.should_build == 'true'
         run: |
           flatpak build-bundle "${GITHUB_WORKSPACE}/flatpak-repo" shiru.flatpak com.github.rockinchaos.shiru
           sha256sum shiru.flatpak > shiru.flatpak.sha256
 
       - name: Create GitHub release
-        if: steps.check.outputs.should_build == 'true'
+        if: steps.build.outputs.should_build == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.check.outputs.tag }}
-          name: Shiru Flatpak ${{ steps.check.outputs.tag }}
+          tag_name: ${{ steps.build.outputs.tag }}
+          name: Shiru Flatpak ${{ steps.build.outputs.tag }}
           body_path: RELEASE_NOTES.md
           files: |
             shiru.flatpak
             shiru.flatpak.sha256
 
-      - name: Update UPSTREAM_VERSION
-        if: steps.check.outputs.should_build == 'true'
+      - name: Commit version and changelog updates
+        if: steps.build.outputs.should_build == 'true'
         run: |
-          echo "${{ steps.check.outputs.tag }}" > UPSTREAM_VERSION
           git config user.name "shiru-flatpak-bot"
           git config user.email "shiru-flatpak-bot@users.noreply.github.com"
-          git add UPSTREAM_VERSION
+          git add UPSTREAM_VERSION .github/CHANGELOG.md
           if git diff --cached --quiet; then
-            echo "UPSTREAM_VERSION unchanged; skipping commit."
+            echo "No changes to commit."
             exit 0
           fi
-          git commit -m "chore: bump UPSTREAM_VERSION to ${{ steps.check.outputs.tag }}"
+          git commit -m "chore: update to upstream version ${{ steps.build.outputs.tag }}"
           git fetch origin main
           git rebase origin/main
           git push

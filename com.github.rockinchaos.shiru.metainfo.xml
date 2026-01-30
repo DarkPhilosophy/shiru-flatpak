@@ -50,13 +50,6 @@
     <content_attribute id="social-location">none</content_attribute>
   </content_rating>
   
-  <screenshots>
-    <screenshot type="default">
-      <image>https://raw.githubusercontent.com/RockinChaos/Shiru/main/.github/assets/screenshot.png</image>
-      <caption>Shiru media library interface</caption>
-    </screenshot>
-  </screenshots>
-  
   <categories>
     <category>AudioVideo</category>
     <category>Video</category>

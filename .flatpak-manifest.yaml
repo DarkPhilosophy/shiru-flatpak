@@ -31,7 +31,7 @@ modules:
     buildsystem: simple
     build-commands:
       # Create app directories
-      - mkdir -p /app/bin /app/lib/shiru /app/share/applications /app/share/icons/hicolor/256x256/apps
+      - mkdir -p /app/bin /app/lib/shiru /app/share/applications /app/share/icons/hicolor/512x512/apps
       
       # Use extracted .deb content from the build script
       - |
@@ -63,9 +63,22 @@ modules:
         #!/bin/bash
         export LD_LIBRARY_PATH="/app/lib/shiru:${LD_LIBRARY_PATH}"
         export FONTCONFIG_PATH="/etc/fonts"
-        # Disable Electron SUID sandbox inside Flatpak
-        export ELECTRON_OZONE_PLATFORM_HINT=auto
-        exec /app/lib/shiru/shiru --no-sandbox "$@"
+        
+        EXTRA_ARGS=()
+        
+        # Fix for Wayland high-DPI input mismatch
+        # We prefer native Wayland over XWayland to ensure correct coordinate mapping
+        if [ -n "$WAYLAND_DISPLAY" ]; then
+          EXTRA_ARGS+=(
+            "--enable-features=UseOzonePlatform,WaylandWindowDecorations"
+            "--ozone-platform=wayland"
+          )
+        else
+          # Fallback hint for X11/Auto
+          export ELECTRON_OZONE_PLATFORM_HINT=auto
+        fi
+
+        exec /app/lib/shiru/shiru --no-sandbox "${EXTRA_ARGS[@]}" "$@"
         LAUNCHER
       - chmod +x /app/bin/shiru
       
@@ -85,7 +98,12 @@ modules:
         DESKTOP
       
       # Install icon
-      - cp /app/lib/shiru/usr/share/icons/hicolor/512x512/apps/shiru.png /app/share/icons/hicolor/256x256/apps/com.github.rockinchaos.shiru.png || true
+      - mkdir -p /app/share/icons/hicolor/512x512/apps
+      - cp /app/lib/shiru/usr/share/icons/hicolor/512x512/apps/shiru.png /app/share/icons/hicolor/512x512/apps/com.github.rockinchaos.shiru.png || true
+      
+      # Install AppStream metadata
+      - mkdir -p /app/share/metainfo
+      - cp com.github.rockinchaos.shiru.metainfo.xml /app/share/metainfo/
     
     sources:
       - type: dir
