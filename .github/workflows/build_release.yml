@@ -69,14 +69,14 @@ jobs:
       - name: Commit version and changelog updates
         if: steps.build.outputs.should_build == 'true'
         run: |
-          git config user.name "shiru-flatpak-bot"
-          git config user.email "shiru-flatpak-bot@users.noreply.github.com"
+          git config user.name "RockinChaos"
+          git config user.email "RockinChaos@CraftationGaming.com"
           git add UPSTREAM_VERSION .github/CHANGELOG.md
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
           fi
           git commit -m "chore: update to upstream version ${{ steps.build.outputs.tag }}"
-          git fetch origin main
-          git rebase origin/main
-          git push
+          git fetch --prune origin main
+          git pull --rebase --autostash origin/main
+          git push origin HEAD:main
