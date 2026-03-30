@@ -18,6 +18,31 @@ It does not modify upstream source code.
 
 <!-- LATEST-VERSION-START -->
 <details open>
+<summary><strong>Upstream release v6.5.2</strong></summary>
+
+- **Author:** @github-actions[bot]
+- **Source:** [v6.5.2](https://github.com/RockinChaos/Shiru/releases/tag/v6.5.2)
+
+### Notes
+* fix: unable to scroll in file manager
+  * Also fixes scrolling dropdowns on the player page.
+* fix: torrent card regex
+  * Titles for certain series were not being properly restored after cleaning the file name.
+* fix: incorrect volume scroll capture
+* fix: play/pause jitter
+* chore: improve wheel volume control
+  * Moves volume boost guard from 150% to 100%.
+  * Volume now snaps to 100% before triggering the volume boost guard.
+  * Volume boost guard is now visually indicated with a color change until the guard is passed.
+* chore: improve search page
+  * Improves infinite scroll visual and fixes potential edge cases where infinite scroll would get stuck.
+* chore: improve card scaling
+* chore: general cross-platform ui improvements
+* chore: stats re-render
+* chore: update deps
+</details>
+
+<details>
 <summary><strong>Upstream release v6.5.1</strong></summary>
 
 - **Author:** @github-actions[bot]
