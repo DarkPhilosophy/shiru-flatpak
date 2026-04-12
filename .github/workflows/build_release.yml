@@ -71,7 +71,10 @@ jobs:
         run: |
           git config user.name "RockinChaos"
           git config user.email "RockinChaos@CraftationGaming.com"
-          git add UPSTREAM_VERSION .github/CHANGELOG.md
+          git add UPSTREAM_VERSION VERSION RELEASE_NOTES.md .github/CHANGELOG.md
+          if [ -f com.github.rockinchaos.shiru.metainfo.xml ]; then
+            git add com.github.rockinchaos.shiru.metainfo.xml
+          fi
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
