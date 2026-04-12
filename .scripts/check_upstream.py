@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import re
+import tempfile
 import urllib.request
 import urllib.error
 from pathlib import Path
@@ -13,13 +14,19 @@ UPSTREAM_VERSION_FILE = Path("UPSTREAM_VERSION")
 LOCAL_VERSION_FILE = Path("VERSION")  # Flatpak version tracking
 CHANGELOG_FILE = Path(".github/CHANGELOG.md")
 RELEASE_NOTES_FILE = Path("RELEASE_NOTES.md")
-GITHUB_OUTPUT = os.environ.get("GITHUB_OUTPUT", "github_output.txt")
+METAINFO_FILE = Path("com.github.rockinchaos.shiru.metainfo.xml")
+GITHUB_OUTPUT = os.environ.get("GITHUB_OUTPUT")
 
 # Allow pre-releases to be considered as latest (default: True for more frequent updates)
 INCLUDE_PRERELEASES = os.environ.get("INCLUDE_PRERELEASES", "true").lower() == "true"
 
 MARKER_START = "<!-- LATEST-VERSION-START -->"
 MARKER_END = "<!-- LATEST-VERSION-END -->"
+
+def get_output_path():
+    if GITHUB_OUTPUT:
+        return GITHUB_OUTPUT
+    return os.path.join(tempfile.gettempdir(), "shiru-github-output.txt")
 
 def get_latest_release(include_prereleases=True):
     if include_prereleases:
@@ -55,6 +62,39 @@ def is_valid_version(version_str):
 def normalize_version(version_str):
     """Normalize version for comparison: v6.5.3-beta.1 -> 6.5.3-beta.1"""
     return version_str.strip().lstrip('v')
+
+def update_metainfo(version, date_str):
+    if not METAINFO_FILE.exists():
+        print(f"Warning: {METAINFO_FILE} not found. Skipping metainfo update.")
+        return
+
+    if not version or not date_str:
+        print("Warning: Missing version/date for metainfo update. Skipping.")
+        return
+
+    content = METAINFO_FILE.read_text("utf-8")
+
+    if f'version="{version}"' in content:
+        print(f"Metainfo already contains version {version}")
+        return
+
+    new_release = f'    <release version="{version}" date="{date_str}" />'
+
+    if "<releases>" in content:
+        pattern = re.compile(r"(<releases>)", re.MULTILINE)
+        if pattern.search(content):
+            new_content = pattern.sub(f"\\1\n{new_release}", content, count=1)
+            METAINFO_FILE.write_text(new_content, encoding="utf-8")
+            print(f"Updated {METAINFO_FILE} with version {version}")
+    else:
+        print(f"Warning: <releases> tag not found in {METAINFO_FILE}")
+
+def write_outputs(should_build, latest_tag, is_prerelease):
+    output_path = get_output_path()
+    with open(output_path, "a", encoding="utf-8") as f:
+        f.write(f"should_build={'true' if should_build else 'false'}\n")
+        f.write(f"tag={latest_tag}\n")
+        f.write(f"prerelease={str(is_prerelease).lower()}\n")
 
 def compare_versions(v1, v2):
     """Compare two version strings. Returns: -1, 0, or 1"""
@@ -98,6 +138,8 @@ def main():
     author = release.get("author", {}).get("login", "unknown")
     html_url = release.get("html_url", "")
     body = release.get("body", "") or "(no description)"
+    published_at = release.get("published_at", "")
+    date_str = published_at.split("T")[0] if "T" in published_at else ""
     
     if not latest_tag:
         print("Error: No tag found in release data.", file=sys.stderr)
@@ -135,10 +177,7 @@ def main():
 
     if not should_build:
         print("Versions match. No update needed.")
-        with open(GITHUB_OUTPUT, "a") as f:
-            f.write(f"should_build=false\n")
-            f.write(f"tag={latest_tag}\n")
-            f.write(f"prerelease={is_prerelease}\n")
+        write_outputs(False, latest_tag, is_prerelease)
         return
 
     print("Update detected or forced.")
@@ -154,6 +193,8 @@ def main():
     
     LOCAL_VERSION_FILE.write_text(flatpak_version + "\n", encoding="utf-8")
     print(f"Updated {LOCAL_VERSION_FILE} to {flatpak_version} (exact upstream version)")
+
+    update_metainfo(flatpak_version, date_str)
 
     # 7. Update CHANGELOG.md with markers logic (Strict replacement inside markers)
     new_entry_content = f"""<details open>
@@ -251,10 +292,7 @@ This release packages upstream **{UPSTREAM_REPO} {latest_tag}**.
     print(f"Generated {RELEASE_NOTES_FILE}")
 
     # 9. Set outputs
-    with open(GITHUB_OUTPUT, "a") as f:
-        f.write("should_build=true\n")
-        f.write(f"tag={latest_tag}\n")
-        f.write(f"prerelease={is_prerelease}\n")
+    write_outputs(True, latest_tag, is_prerelease)
 
 if __name__ == "__main__":
     main()
