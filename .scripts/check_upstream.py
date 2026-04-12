@@ -140,7 +140,10 @@ def main():
     html_url = release.get("html_url", "")
     body = release.get("body", "") or "(no description)"
     published_at = release.get("published_at", "")
-    date_str = published_at.split("T")[0] if "T" in published_at else ""
+    if "T" not in published_at:
+        print("Error: Missing or invalid published_at in upstream release payload.", file=sys.stderr)
+        sys.exit(1)
+    date_str = published_at.split("T", 1)[0]
     
     if not latest_tag:
         print("Error: No tag found in release data.", file=sys.stderr)
