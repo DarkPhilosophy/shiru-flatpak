@@ -39,6 +39,12 @@ class TestPublishedAtValidation(unittest.TestCase):
     def test_date_only_exits(self):
         self._assert_exit_1(_release("2024-01-01"))
 
+    def test_none_value_exits(self):
+        self._assert_exit_1(_release(None))
+
+    def test_missing_date_before_t_exits(self):
+        self._assert_exit_1(_release("T2024-01-01"))
+
 
 if __name__ == "__main__":
     unittest.main()
