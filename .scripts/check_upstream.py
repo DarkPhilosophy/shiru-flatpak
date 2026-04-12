@@ -6,6 +6,7 @@ import re
 import tempfile
 import urllib.request
 import urllib.error
+from datetime import date
 from pathlib import Path
 
 # Configuration
@@ -130,6 +131,22 @@ def compare_versions(v1, v2):
     
     return 0
 
+def extract_release_date(published_at):
+    if not isinstance(published_at, str):
+        return None
+
+    published_at = published_at.strip()
+    date_str, sep, _ = published_at.partition("T")
+    if not sep or not date_str:
+        return None
+
+    try:
+        date.fromisoformat(date_str)
+    except ValueError:
+        return None
+
+    return date_str
+
 def main():
     # 1. Fetch latest upstream release
     print(f"Fetching latest release for {UPSTREAM_REPO} (include_prereleases={INCLUDE_PRERELEASES})...")
@@ -139,11 +156,11 @@ def main():
     author = release.get("author", {}).get("login", "unknown")
     html_url = release.get("html_url", "")
     body = release.get("body", "") or "(no description)"
-    published_at = release.get("published_at", "")
-    if "T" not in published_at:
+    published_at = release.get("published_at")
+    date_str = extract_release_date(published_at)
+    if not date_str:
         print("Error: Missing or invalid published_at in upstream release payload.", file=sys.stderr)
         sys.exit(1)
-    date_str = published_at.split("T", 1)[0]
     
     if not latest_tag:
         print("Error: No tag found in release data.", file=sys.stderr)
