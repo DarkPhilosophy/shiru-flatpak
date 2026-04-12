@@ -37,7 +37,13 @@ reviews:
       instructions: "Focus on version handling, file mutation side effects, GitHub Actions output semantics, and local-vs-CI behavior differences."
     - path: "*.sh"
       instructions: "Focus on shell safety, quoting, errexit compatibility, and destructive or non-idempotent commands."
+    - path: "**/*.sh"
+      instructions: "Focus on shell safety, quoting, errexit compatibility, and destructive or non-idempotent commands."
     - path: "*.yaml"
+      instructions: "Focus on packaging/runtime correctness, path consistency, and whether manifests/configs align with the actual build flow."
+    - path: "**/*.yaml"
+      instructions: "Focus on packaging/runtime correctness, path consistency, and whether manifests/configs align with the actual build flow."
+    - path: "**/*.yml"
       instructions: "Focus on packaging/runtime correctness, path consistency, and whether manifests/configs align with the actual build flow."
   auto_review:
     enabled: true
@@ -54,10 +60,10 @@ reviews:
     description:
       mode: "warning"
     custom_checks:
-      - mode: "warning"
+      - mode: "error"
         name: "Version file sync"
         instructions: "Warn if release/version automation changes update UPSTREAM_VERSION, VERSION, metainfo, release notes, or changelog inconsistently."
-      - mode: "warning"
+      - mode: "error"
         name: "Tracked output pollution"
         instructions: "Warn if scripts write CI outputs, logs, caches, or transient command output into tracked repository files during normal local execution."
   tools:

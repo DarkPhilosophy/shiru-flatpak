@@ -91,7 +91,8 @@ def update_metainfo(version, date_str):
 
 def write_outputs(should_build, latest_tag, is_prerelease):
     output_path = get_output_path()
-    with open(output_path, "a", encoding="utf-8") as f:
+    mode = "a" if GITHUB_OUTPUT else "w"
+    with open(output_path, mode, encoding="utf-8") as f:
         f.write(f"should_build={'true' if should_build else 'false'}\n")
         f.write(f"tag={latest_tag}\n")
         f.write(f"prerelease={str(is_prerelease).lower()}\n")
