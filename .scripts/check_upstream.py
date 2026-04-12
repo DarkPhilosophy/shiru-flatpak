@@ -10,27 +10,91 @@ from pathlib import Path
 # Configuration
 UPSTREAM_REPO = "RockinChaos/Shiru"
 UPSTREAM_VERSION_FILE = Path("UPSTREAM_VERSION")
+LOCAL_VERSION_FILE = Path("VERSION")  # Flatpak version tracking
 CHANGELOG_FILE = Path(".github/CHANGELOG.md")
 RELEASE_NOTES_FILE = Path("RELEASE_NOTES.md")
 GITHUB_OUTPUT = os.environ.get("GITHUB_OUTPUT", "github_output.txt")
 
+# Allow pre-releases to be considered as latest (default: True for more frequent updates)
+INCLUDE_PRERELEASES = os.environ.get("INCLUDE_PRERELEASES", "true").lower() == "true"
+
 MARKER_START = "<!-- LATEST-VERSION-START -->"
 MARKER_END = "<!-- LATEST-VERSION-END -->"
 
-def get_latest_release():
-    url = f"https://api.github.com/repos/{UPSTREAM_REPO}/releases/latest"
-    try:
-        with urllib.request.urlopen(url) as response:
-            return json.loads(response.read().decode())
-    except urllib.error.HTTPError as e:
-        print(f"Error fetching release: {e}", file=sys.stderr)
-        sys.exit(1)
+def get_latest_release(include_prereleases=True):
+    if include_prereleases:
+        # Use /releases endpoint to include pre-releases
+        url = f"https://api.github.com/repos/{UPSTREAM_REPO}/releases"
+        try:
+            with urllib.request.urlopen(url) as response:
+                releases = json.loads(response.read().decode())
+                # Return the first release (most recent, including pre-releases)
+                if releases:
+                    return releases[0]
+                return None
+        except urllib.error.HTTPError as e:
+            print(f"Error fetching releases: {e}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        # Use /releases/latest endpoint for stable releases only
+        url = f"https://api.github.com/repos/{UPSTREAM_REPO}/releases/latest"
+        try:
+            with urllib.request.urlopen(url) as response:
+                return json.loads(response.read().decode())
+        except urllib.error.HTTPError as e:
+            print(f"Error fetching release: {e}", file=sys.stderr)
+            sys.exit(1)
+
+def is_valid_version(version_str):
+    """Validate version string format (e.g., v6.5.3-beta.1)"""
+    if not version_str:
+        return False
+    # Match version pattern: v{major}.{minor}.{patch}[-prerelease]
+    return bool(re.match(r'^v?\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?$', version_str))
+
+def normalize_version(version_str):
+    """Normalize version for comparison: v6.5.3-beta.1 -> 6.5.3-beta.1"""
+    return version_str.strip().lstrip('v')
+
+def compare_versions(v1, v2):
+    """Compare two version strings. Returns: -1, 0, or 1"""
+    def parse(v):
+        # Remove 'v' prefix
+        v = v.lstrip('v')
+        # Split into base and prerelease
+        parts = v.split('-', 1)
+        base = parts[0].split('.')
+        prerelease = parts[1] if len(parts) > 1 else ''
+        return [int(x) for x in base], prerelease
+    
+    base1, pre1 = parse(v1)
+    base2, pre2 = parse(v2)
+    
+    # Compare base version
+    for i in range(max(len(base1), len(base2))):
+        b1 = base1[i] if i < len(base1) else 0
+        b2 = base2[i] if i < len(base2) else 0
+        if b1 != b2:
+            return -1 if b1 < b2 else 1
+    
+    # Compare prerelease: stable > prerelease
+    if pre1 and not pre2:
+        return 1
+    if not pre1 and pre2:
+        return -1
+    if pre1 < pre2:
+        return -1
+    if pre1 > pre2:
+        return 1
+    
+    return 0
 
 def main():
     # 1. Fetch latest upstream release
-    print(f"Fetching latest release for {UPSTREAM_REPO}...")
-    release = get_latest_release()
+    print(f"Fetching latest release for {UPSTREAM_REPO} (include_prereleases={INCLUDE_PRERELEASES})...")
+    release = get_latest_release(include_prereleases=INCLUDE_PRERELEASES)
     latest_tag = release.get("tag_name", "").strip()
+    is_prerelease = release.get("prerelease", False)
     author = release.get("author", {}).get("login", "unknown")
     html_url = release.get("html_url", "")
     body = release.get("body", "") or "(no description)"
@@ -39,33 +103,59 @@ def main():
         print("Error: No tag found in release data.", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Latest upstream version: {latest_tag}")
+    print(f"Latest upstream version: {latest_tag} (pre-release: {is_prerelease})")
 
-    # 2. Check local version
-    current_version = ""
+    # 2. Check local upstream version
+    current_upstream_version = ""
     if UPSTREAM_VERSION_FILE.exists():
-        current_version = UPSTREAM_VERSION_FILE.read_text("utf-8").strip()
+        current_upstream_version = UPSTREAM_VERSION_FILE.read_text("utf-8").strip()
     
-    print(f"Current local version: {current_version}")
+    print(f"Current upstream version: {current_upstream_version}")
 
-    # 3. Determine if update is needed
+    # 3. Check local flatpak version (from VERSION file)
+    current_flatpak_version = ""
+    if LOCAL_VERSION_FILE.exists():
+        current_flatpak_version = LOCAL_VERSION_FILE.read_text("utf-8").strip()
+    
+    print(f"Current flatpak version: {current_flatpak_version}")
+
+    # 4. Determine if update is needed (compare upstream versions)
     force_update = os.environ.get("FORCE", "false").lower() == "true"
-    should_build = force_update or (latest_tag != current_version)
+    
+    # Use proper version comparison
+    version_changed = False
+    if force_update:
+        version_changed = True
+    elif current_upstream_version and latest_tag:
+        version_changed = compare_versions(latest_tag, current_upstream_version) != 0
+    elif not current_upstream_version:
+        version_changed = True
+    
+    should_build = version_changed
 
     if not should_build:
         print("Versions match. No update needed.")
         with open(GITHUB_OUTPUT, "a") as f:
             f.write(f"should_build=false\n")
             f.write(f"tag={latest_tag}\n")
+            f.write(f"prerelease={is_prerelease}\n")
         return
 
     print("Update detected or forced.")
 
-    # 4. Update UPSTREAM_VERSION file
+    # 5. Update UPSTREAM_VERSION file
     UPSTREAM_VERSION_FILE.write_text(latest_tag + "\n", encoding="utf-8")
     print(f"Updated {UPSTREAM_VERSION_FILE} to {latest_tag}")
 
-    # 5. Update CHANGELOG.md with markers logic (Strict replacement inside markers)
+    # 6. Update VERSION file to match upstream version exactly
+    # Use full tag without "v" prefix - e.g., v6.5.3-beta.1 -> 6.5.3-beta.1
+    # This ensures each beta/RC gets its own unique version
+    flatpak_version = latest_tag.lstrip('v')
+    
+    LOCAL_VERSION_FILE.write_text(flatpak_version + "\n", encoding="utf-8")
+    print(f"Updated {LOCAL_VERSION_FILE} to {flatpak_version} (exact upstream version)")
+
+    # 7. Update CHANGELOG.md with markers logic (Strict replacement inside markers)
     new_entry_content = f"""<details open>
 <summary><strong>Upstream release {latest_tag}</strong></summary>
 
@@ -137,15 +227,22 @@ def main():
         CHANGELOG_FILE.write_text(final_changelog, encoding="utf-8")
         print(f"Updated {CHANGELOG_FILE}")
 
-    # 6. Generate RELEASE_NOTES.md for GitHub Release
+    # 8. Generate RELEASE_NOTES.md for GitHub Release
     release_notes_content = f"""# Shiru Flatpak {latest_tag}
 
 This release packages upstream **{UPSTREAM_REPO} {latest_tag}**.
+"""
+    # Add pre-release warning if applicable
+    if is_prerelease:
+        release_notes_content += """
+> ⚠️ **This is a pre-release version.** It may contain experimental features or bugs.
+"""
 
+    release_notes_content += f"""
 ## Upstream Details
 - **Version:** {latest_tag}
 - **Author:** @{author}
-- **Original Release:** {html_url}
+- **Original Release:** [GitHub Release]({html_url})
 
 ## Upstream Changelog
 {body}
@@ -153,10 +250,11 @@ This release packages upstream **{UPSTREAM_REPO} {latest_tag}**.
     RELEASE_NOTES_FILE.write_text(release_notes_content, encoding="utf-8")
     print(f"Generated {RELEASE_NOTES_FILE}")
 
-    # 7. Set outputs
+    # 9. Set outputs
     with open(GITHUB_OUTPUT, "a") as f:
         f.write("should_build=true\n")
         f.write(f"tag={latest_tag}\n")
+        f.write(f"prerelease={is_prerelease}\n")
 
 if __name__ == "__main__":
     main()
