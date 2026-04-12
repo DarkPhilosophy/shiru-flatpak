@@ -2,6 +2,7 @@
 
 [![Build Status](https://github.com/DarkPhilosophy/shiru-flatpak/actions/workflows/build_release.yml/badge.svg)](https://github.com/DarkPhilosophy/shiru-flatpak/actions/workflows/build_release.yml)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/DarkPhilosophy/shiru-flatpak?utm_source=oss&utm_medium=github&utm_campaign=DarkPhilosophy%2Fshiru-flatpak&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
 Flatpak repackaging for the Shiru desktop app using the official upstream `.deb` releases.
 This repo intentionally **does not** include Shiru source code.
