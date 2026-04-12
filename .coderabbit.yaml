@@ -1,0 +1,74 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "en-US"
+tone_instructions: "Prioritize correctness, regressions, security, CI reliability, and packaging/versioning issues over style nits."
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: false
+  high_level_summary: true
+  high_level_summary_in_walkthrough: true
+  review_status: true
+  review_details: false
+  commit_status: true
+  fail_commit_status: true
+  collapse_walkthrough: true
+  changed_files_summary: true
+  sequence_diagrams: false
+  estimate_code_review_effort: true
+  assess_linked_issues: false
+  related_issues: false
+  related_prs: true
+  suggested_labels: false
+  suggested_reviewers: false
+  auto_assign_reviewers: false
+  poem: false
+  enable_prompt_for_ai_agents: true
+  path_filters:
+    - "**"
+    - "!build-dir/**"
+    - "!flatpak-build/**"
+    - "!.flatpak-builder/**"
+    - "!flatpak-repo/**"
+    - "!github_output.txt"
+  path_instructions:
+    - path: ".github/workflows/**"
+      instructions: "Focus on CI correctness, checkout/push safety, idempotency, and whether generated release/version artifacts are committed consistently."
+    - path: ".scripts/**/*.py"
+      instructions: "Focus on version handling, file mutation side effects, GitHub Actions output semantics, and local-vs-CI behavior differences."
+    - path: "*.sh"
+      instructions: "Focus on shell safety, quoting, errexit compatibility, and destructive or non-idempotent commands."
+    - path: "*.yaml"
+      instructions: "Focus on packaging/runtime correctness, path consistency, and whether manifests/configs align with the actual build flow."
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    auto_pause_after_reviewed_commits: 0
+    drafts: true
+    ignore_title_keywords:
+      - "wip"
+      - "do not review"
+  pre_merge_checks:
+    title:
+      mode: "warning"
+      requirements: "Title should describe the actual technical change and preferably use conventional commit style."
+    description:
+      mode: "warning"
+    custom_checks:
+      - mode: "warning"
+        name: "Version file sync"
+        instructions: "Warn if release/version automation changes update UPSTREAM_VERSION, VERSION, metainfo, release notes, or changelog inconsistently."
+      - mode: "warning"
+        name: "Tracked output pollution"
+        instructions: "Warn if scripts write CI outputs, logs, caches, or transient command output into tracked repository files during normal local execution."
+  tools:
+    shellcheck:
+      enabled: true
+    ruff:
+      enabled: true
+    markdownlint:
+      enabled: true
+    github-checks:
+      enabled: true
+
+chat:
+  auto_reply: true
