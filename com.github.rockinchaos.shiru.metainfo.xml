@@ -68,6 +68,7 @@
   </requires>
   
   <releases>
+    <release version="6.5.3-beta.2" date="2026-04-20" />
     <release version="6.4.6" date="2024-12-20">
       <description>
         <p>Latest Shiru release with improved media streaming and library management</p>
