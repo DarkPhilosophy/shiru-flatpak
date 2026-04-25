@@ -18,6 +18,18 @@ It does not modify upstream source code.
 
 <!-- LATEST-VERSION-START -->
 <details open>
+<summary><strong>Upstream release v6.5.3-beta.3</strong></summary>
+
+- **Author:** @github-actions[bot]
+- **Source:** [v6.5.3-beta.3](https://github.com/RockinChaos/Shiru/releases/tag/v6.5.3-beta.3)
+
+### Notes
+* chore: remove ambiguous IPC usage
+* chore: improve protocol handling
+* chore: update deps
+</details>
+
+<details>
 <summary><strong>Upstream release v6.5.3-beta.2</strong></summary>
 
 - **Author:** @github-actions[bot]
