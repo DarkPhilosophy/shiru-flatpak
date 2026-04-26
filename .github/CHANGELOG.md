@@ -18,6 +18,24 @@ It does not modify upstream source code.
 
 <!-- LATEST-VERSION-START -->
 <details open>
+<summary><strong>Upstream release v6.5.3-beta.5</strong></summary>
+
+- **Author:** @github-actions[bot]
+- **Source:** [v6.5.3-beta.5](https://github.com/RockinChaos/Shiru/releases/tag/v6.5.3-beta.5)
+
+### Notes
+* feat: spoiler control settings
+  * Adds a configurable spoiler control system that hides episode and series content based on watch progress. Users can choose from five protection levels (Minimal, Moderate, Strict, Hermit) and define which list status types the control applies to.
+  * This is set to off by default, which will result in all episode cards showing their images regardless of watch progress. You can set it to Minimal and add your preferred list statuses to return to the previous behavior.
+* feat: video cover toggle
+  * Adds a toggle in the player dropdown to enable or disable filling the video to the full width.
+  * The toggle and its keybind now persist across restarts.
+* fix: prevent list mutation race conditions
+  * Entry updates and deletions are now chained to prevent race conditions and ensure errors are surfaced correctly.
+* chore: increase the number of displayed season years
+</details>
+
+<details>
 <summary><strong>Upstream release v6.5.3-beta.3</strong></summary>
 
 - **Author:** @github-actions[bot]
