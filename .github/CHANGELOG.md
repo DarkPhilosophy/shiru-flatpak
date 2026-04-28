@@ -18,6 +18,21 @@ It does not modify upstream source code.
 
 <!-- LATEST-VERSION-START -->
 <details open>
+<summary><strong>Upstream release v6.5.3-beta.6</strong></summary>
+
+- **Author:** @github-actions[bot]
+- **Source:** [v6.5.3-beta.6](https://github.com/RockinChaos/Shiru/releases/tag/v6.5.3-beta.6)
+
+### Notes
+* feat: extension custom settings
+  * Extensions can now declare custom settings in their manifest. Values are persisted alongside the enabled state and passed to the worker on load and on change.
+* feat: respect extension enabled state in worker lifecycle
+  * Extensions that are disabled no longer load or validate their workers on startup or network recovery. Toggling an extension off terminates its worker immediately, and toggling it on loads and validates it on demand.
+* fix: infinitely awaiting network check
+* fix: preview card spoilers
+</details>
+
+<details>
 <summary><strong>Upstream release v6.5.3-beta.5</strong></summary>
 
 - **Author:** @github-actions[bot]
