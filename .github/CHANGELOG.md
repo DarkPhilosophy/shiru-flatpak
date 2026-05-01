@@ -18,6 +18,24 @@ It does not modify upstream source code.
 
 <!-- LATEST-VERSION-START -->
 <details open>
+<summary><strong>Upstream release v6.5.3-beta.7</strong></summary>
+
+- **Author:** @github-actions[bot]
+- **Source:** [v6.5.3-beta.7](https://github.com/RockinChaos/Shiru/releases/tag/v6.5.3-beta.7)
+
+### Notes
+* feat: multiselect extension setting
+* fix: search page preview cards on small screens
+* fix: network throttle
+* chore: disable extensions by default
+  * Adding new extension sources will no longer automatically enable the extensions.
+* chore: improve episode skeleton card
+* chore: clamp external player duration
+* chore: keep highest accuracy results
+* chore: enforce extension type
+</details>
+
+<details>
 <summary><strong>Upstream release v6.5.3-beta.6</strong></summary>
 
 - **Author:** @github-actions[bot]
