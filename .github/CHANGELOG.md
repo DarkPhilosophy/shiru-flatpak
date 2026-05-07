@@ -18,6 +18,20 @@ It does not modify upstream source code.
 
 <!-- LATEST-VERSION-START -->
 <details open>
+<summary><strong>Upstream release v6.6.1-beta.1</strong></summary>
+
+- **Author:** @github-actions[bot]
+- **Source:** [v6.6.1-beta.1](https://github.com/RockinChaos/Shiru/releases/tag/v6.6.1-beta.1)
+
+### Notes
+* chore: block local network access in android fetch proxy
+  * Extensions on Android that require the fetch proxy to reach external sources are now prevented from accessing private or local network addresses, stripping sensitive request options.
+* chore: cache pending notifications
+  * Fixes a bug where pending notifications were lost if the app was closed before they were sent.
+* chore: improve notifications refresh
+</details>
+
+<details>
 <summary><strong>Upstream release v6.6.0</strong></summary>
 
 - **Author:** @github-actions[bot]
