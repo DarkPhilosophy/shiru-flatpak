@@ -1,17 +1,19 @@
-# Shiru Flatpak v6.6.1-beta.1
+# Shiru Flatpak v6.6.1-beta.2
 
-This release packages upstream **RockinChaos/Shiru v6.6.1-beta.1**.
+This release packages upstream **RockinChaos/Shiru v6.6.1-beta.2**.
 
 > ⚠️ **This is a pre-release version.** It may contain experimental features or bugs.
 
 ## Upstream Details
-- **Version:** v6.6.1-beta.1
+- **Version:** v6.6.1-beta.2
 - **Author:** @github-actions[bot]
-- **Original Release:** [GitHub Release](https://github.com/RockinChaos/Shiru/releases/tag/v6.6.1-beta.1)
+- **Original Release:** [GitHub Release](https://github.com/RockinChaos/Shiru/releases/tag/v6.6.1-beta.2)
 
 ## Upstream Changelog
-* chore: block local network access in android fetch proxy
-  * Extensions on Android that require the fetch proxy to reach external sources are now prevented from accessing private or local network addresses, stripping sensitive request options.
-* chore: cache pending notifications
-  * Fixes a bug where pending notifications were lost if the app was closed before they were sent.
-* chore: improve notifications refresh
+* fix: improve w2g peer discovery and session stability (#148)
+* fix: episode list race conditions
+* chore: faster offline detection
+  * Intercept all fetch requests to detect outages immediately, abort in-flight requests when offline, and ping on startup to catch offline state before any requests are made.
+* chore: improve notification card images
+* chore: reduce ambiguous event listeners
+* chore: update deps

@@ -18,6 +18,22 @@ It does not modify upstream source code.
 
 <!-- LATEST-VERSION-START -->
 <details open>
+<summary><strong>Upstream release v6.6.1-beta.2</strong></summary>
+
+- **Author:** @github-actions[bot]
+- **Source:** [v6.6.1-beta.2](https://github.com/RockinChaos/Shiru/releases/tag/v6.6.1-beta.2)
+
+### Notes
+* fix: improve w2g peer discovery and session stability (#148)
+* fix: episode list race conditions
+* chore: faster offline detection
+  * Intercept all fetch requests to detect outages immediately, abort in-flight requests when offline, and ping on startup to catch offline state before any requests are made.
+* chore: improve notification card images
+* chore: reduce ambiguous event listeners
+* chore: update deps
+</details>
+
+<details>
 <summary><strong>Upstream release v6.6.1-beta.1</strong></summary>
 
 - **Author:** @github-actions[bot]
