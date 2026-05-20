@@ -18,6 +18,22 @@ It does not modify upstream source code.
 
 <!-- LATEST-VERSION-START -->
 <details open>
+<summary><strong>Upstream release v6.6.1-beta.4</strong></summary>
+
+- **Author:** @github-actions[bot]
+- **Source:** [v6.6.1-beta.4](https://github.com/RockinChaos/Shiru/releases/tag/v6.6.1-beta.4)
+
+### Notes
+* fix: Android safe area insets on older webview
+* fix: Android status transition
+* fix: navigation bar border
+* chore: exit fullscreen before navigating on Android
+* chore: improve Android landscape visual
+* chore: always log errors
+* chore: update deps
+</details>
+
+<details>
 <summary><strong>Upstream release v6.6.1-beta.3</strong></summary>
 
 - **Author:** @github-actions[bot]
