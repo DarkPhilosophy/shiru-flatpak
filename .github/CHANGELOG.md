@@ -18,6 +18,28 @@ It does not modify upstream source code.
 
 <!-- LATEST-VERSION-START -->
 <details open>
+<summary><strong>Upstream release v6.6.1-beta.6</strong></summary>
+
+- **Author:** @github-actions[bot]
+- **Source:** [v6.6.1-beta.6](https://github.com/RockinChaos/Shiru/releases/tag/v6.6.1-beta.6)
+
+### Notes
+* fix: do not swallow validation errors
+* fix: DeX margin on sidebar
+* fix: image search
+* chore: improve playback
+  * Improves playback performance.
+  * Fixes Wayland issues, including hardware-accelerated decoding.
+  * Fixes playback speed keybinds by adding boundaries to prevent errors.
+* chore: skip thumbnail generation
+  * Skips generating thumbnails on Android and during external playback.
+* chore: update deps
+  * Updates Android to use 16 KB page size.
+* chore: bump to webtorrent v3.0.16
+* chore: bump to electron v42.3.0
+</details>
+
+<details>
 <summary><strong>Upstream release v6.6.1-beta.5</strong></summary>
 
 - **Author:** @github-actions[bot]
