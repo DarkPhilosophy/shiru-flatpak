@@ -68,6 +68,7 @@
   </requires>
   
   <releases>
+    <release version="6.7.0" date="2026-06-17" />
     <release version="6.6.1-beta.6" date="2026-06-04" />
     <release version="6.6.1-beta.5" date="2026-05-27" />
     <release version="6.6.1-beta.4" date="2026-05-20" />
