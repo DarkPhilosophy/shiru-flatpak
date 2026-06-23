@@ -1,64 +1,16 @@
-# Shiru Flatpak v6.7.0
+# Shiru Flatpak v6.7.1
 
-This release packages upstream **RockinChaos/Shiru v6.7.0**.
+This release packages upstream **RockinChaos/Shiru v6.7.1**.
 
 ## Upstream Details
-- **Version:** v6.7.0
+- **Version:** v6.7.1
 - **Author:** @github-actions[bot]
-- **Original Release:** [GitHub Release](https://github.com/RockinChaos/Shiru/releases/tag/v6.7.0)
+- **Original Release:** [GitHub Release](https://github.com/RockinChaos/Shiru/releases/tag/v6.7.1)
 
 ## Upstream Changelog
-* feat: rewrite sidebar and bottombar navigation
-  * Redesigned the sidebar and bottombar navigation with a cleaner, more flexible system. Both now share the same components and automatically move lower-priority buttons into an overflow "More" menu when space runs out.
-  * Adds togglable labels to the navigation buttons. This is enabled by default and can be disabled via Settings -> Interface -> Accessibility Settings -> Show Labels.
-* feat: replace legacy dropdowns with NestedDropdown
-* feat: add Linux Flatpak build target
-* feat: add manual update flow for macOS and Flatpak
-* feat: handle AniList token expiry
-* feat: Android toast
-* fix: disable WebView minimum font size on Android
-* fix: Android safe area insets on older webview
-* fix: Android status transition
-* fix: navigation bar border
-* fix: WebTorrent debug on Android
-* fix: re-initializing WebTorrent on Android
-* fix: improve w2g peer discovery and session stability (#148)
-* fix: reset media progress when rewatching
-* fix: episode list race conditions
-* fix: do not swallow validation errors
-* fix: DeX margin on sidebar
-* fix: launch external player after rejecting prompt
-* fix: suppress install prompt on Android
-* fix: image search
-* chore: block local network access in Android fetch proxy
-  * Extensions on Android that require the fetch proxy to reach external sources are now prevented from accessing private or local network addresses, stripping sensitive request options.
-* chore: cache pending notifications
-  * Fixes a bug where pending notifications were lost if the app was closed before they were sent.
-* chore: faster offline detection
-  * Intercept all fetch requests to detect outages immediately, abort in-flight requests when offline, and ping on startup to catch offline state before any requests are made.
-* chore: improve playback
-  * Improves playback performance.
-  * Fixes Wayland issues, including hardware-accelerated decoding.
-  * Fixes playback speed keybinds by adding boundaries to prevent errors.
-* chore: skip thumbnail generation
-  * Skips generating thumbnails on Android and during external playback.
-* chore: improve notifications refresh
-* chore: exit fullscreen before navigating on Android
-* chore: improve Android landscape visual
-* chore: update deprecated protocols
-* chore: improve debugging on startup
-* chore: improve notification card images
-* chore: reduce ambiguous event listeners
-* chore: improve scrolling on the manager page
-* chore: improve modal scaling on small screens
-* chore: simplify Android insets
-* chore: bump to Android to nodejs v24.5.0
-  * Fixes Node.js re-initialization on Activity recreation instead of the app crashing.
-  * Updates Android to use 16 KB page size.
-* chore: bump to webtorrent v3.0.16
-* chore: bump to electron v42.3.0
-* chore: bump to electron-builder v25.15.3
-  * Fixes missing libfuse.so.2 dependency on modern Linux systems.
-* chore: always log errors
+* fix: dont specify flatpak details (#165)
+* fix: disable WebView text zoom on Android
+* fix: show donate button toggle on Android
+* fix: card padding
+* fix: missing import
 * chore: update deps
-* chore: refactor

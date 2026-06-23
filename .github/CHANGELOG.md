@@ -18,6 +18,21 @@ It does not modify upstream source code.
 
 <!-- LATEST-VERSION-START -->
 <details open>
+<summary><strong>Upstream release v6.7.1</strong></summary>
+
+- **Author:** @github-actions[bot]
+- **Source:** [v6.7.1](https://github.com/RockinChaos/Shiru/releases/tag/v6.7.1)
+
+### Notes
+* fix: dont specify flatpak details (#165)
+* fix: disable WebView text zoom on Android
+* fix: show donate button toggle on Android
+* fix: card padding
+* fix: missing import
+* chore: update deps
+</details>
+
+<details>
 <summary><strong>Upstream release v6.7.0</strong></summary>
 
 - **Author:** @github-actions[bot]
