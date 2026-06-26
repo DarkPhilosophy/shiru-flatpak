@@ -18,6 +18,24 @@ It does not modify upstream source code.
 
 <!-- LATEST-VERSION-START -->
 <details open>
+<summary><strong>Upstream release v6.7.2-beta.1</strong></summary>
+
+- **Author:** @github-actions[bot]
+- **Source:** [v6.7.2-beta.1](https://github.com/RockinChaos/Shiru/releases/tag/v6.7.2-beta.1)
+
+### Notes
+* feat: URL array support for update and main fields
+  * Supports an array of URLs for extension update and repository main fields.
+  * Attempts each URL in order, falling back to subsequent URLs if unavailable.
+* feat: skip update prompt for ignored version on restart (#166)
+* fix: allow batch lookup for multi-episode movies
+* fix: add missing extensions on update check
+* fix: make dedupe case insensitive
+* chore: notify on change of repository manifest
+* chore: simplify extension cards
+</details>
+
+<details>
 <summary><strong>Upstream release v6.7.1</strong></summary>
 
 - **Author:** @github-actions[bot]
