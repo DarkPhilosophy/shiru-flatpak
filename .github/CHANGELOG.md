@@ -18,6 +18,24 @@ It does not modify upstream source code.
 
 <!-- LATEST-VERSION-START -->
 <details open>
+<summary><strong>Upstream release v6.8.0-beta.2</strong></summary>
+
+- **Author:** @github-actions[bot]
+- **Source:** [v6.8.0-beta.2](https://github.com/RockinChaos/Shiru/releases/tag/v6.8.0-beta.2)
+
+### Notes
+<div align="center">
+
+### NOTICE: AS OF `v6.8.0-beta.1` YOU WILL NOT BE ABLE TO DOWNGRADE AFTER UPDATING WITHOUT DATA LOSS!
+
+</div>
+
+---
+* feat: add migration screen for v2 data upgrade
+* fix: importing navigation causing preemptive AniList registration
+</details>
+
+<details>
 <summary><strong>Upstream release v6.8.0-beta.1</strong></summary>
 
 - **Author:** @github-actions[bot]
