@@ -18,55 +18,10 @@ It does not modify upstream source code.
 
 <!-- LATEST-VERSION-START -->
 <details open>
-<summary><strong>Upstream release v6.8.0-beta.3</strong></summary>
+<summary><strong>Upstream release v6.8.0</strong></summary>
 
 - **Author:** @github-actions[bot]
-- **Source:** [v6.8.0-beta.3](https://github.com/RockinChaos/Shiru/releases/tag/v6.8.0-beta.3)
-
-### Notes
-<div align="center">
-
-### NOTICE: AS OF `v6.8.0-beta.1` YOU WILL NOT BE ABLE TO DOWNGRADE AFTER UPDATING WITHOUT DATA LOSS!
-
-</div>
-
----
-* feat: splash screen
-  * A splash screen will now be shown between switching profiles and when a reload is triggered on settings reset or when clearing caches.
-* fix: show correct changelog for latest update
-  * The GitHub API can be slow to update the releases feed, if our update version is missing we will just fetch it directly instead of showing the previous releases changelog.
-* fix: crash on file change with stats overlay
-* fix: sync user extension settings with shared database
-* fix: incorrectly showing buffering
-* fix: persisted video cover
-* chore: improve Android TV navigation (#163)
-* chore: increase maximum transfer speed to 1GiB
-* chore: update deps
-</details>
-
-<details>
-<summary><strong>Upstream release v6.8.0-beta.2</strong></summary>
-
-- **Author:** @github-actions[bot]
-- **Source:** [v6.8.0-beta.2](https://github.com/RockinChaos/Shiru/releases/tag/v6.8.0-beta.2)
-
-### Notes
-<div align="center">
-
-### NOTICE: AS OF `v6.8.0-beta.1` YOU WILL NOT BE ABLE TO DOWNGRADE AFTER UPDATING WITHOUT DATA LOSS!
-
-</div>
-
----
-* feat: add migration screen for v2 data upgrade
-* fix: importing navigation causing preemptive AniList registration
-</details>
-
-<details>
-<summary><strong>Upstream release v6.8.0-beta.1</strong></summary>
-
-- **Author:** @github-actions[bot]
-- **Source:** [v6.8.0-beta.1](https://github.com/RockinChaos/Shiru/releases/tag/v6.8.0-beta.1)
+- **Source:** [v6.8.0](https://github.com/RockinChaos/Shiru/releases/tag/v6.8.0)
 
 ### Notes
 <div align="center">
@@ -82,7 +37,15 @@ It does not modify upstream source code.
   * Extensions are now shared across profiles.
   * Bumps IndexedDB version from v1 to v2, migrating data from their old caches to the new structure.
   * **Note:** After upgrading, a downgrade will NOT be possible without data loss!
+* feat: splash screen
+  * A splash screen will now be shown between switching profiles and when a reload is triggered on settings reset or when clearing caches.
+* feat: add migration screen for v2 data upgrade
+* feat: URL array support for update and main fields
+  * Supports an array of URLs for extension update and repository main fields.
+  * Attempts each URL in order, falling back to subsequent URLs if unavailable.
+* feat: skip update prompt for ignored version on restart (#166)
 * feat: support relative paths in extension manifests (#167)
+* feat: periodic extension update checks
 * feat: add scheduled cache eviction
 * fix: memory leaks and navigation performance
   * Fixes performance issues across home, search, and navigation
@@ -92,6 +55,8 @@ It does not modify upstream source code.
   * Fixes AudioLabel causing slow navigation
   * Fixes store subscribe leaks
   * Fixes base font size calculation
+* fix: show correct changelog for latest update
+  * The GitHub API can be slow to update the releases feed. If our update version is missing, we will just fetch it directly instead of showing the previous releases changelog.
 * fix: loading local extensions from path (#170)
   * Fixes loading extensions from file path on Linux and macOS.
 * fix: searching and resolving titles with ASCII characters
@@ -99,12 +64,40 @@ It does not modify upstream source code.
 * fix: extension worker race conditions
 * fix: show skip/resolver prompt
 * fix: torrent card image spoiler
+* fix: crash on file change with stats overlay
+* fix: sync user extension settings with shared database
+* fix: incorrectly showing buffering
+* fix: persisted video cover
+* fix: prompt search for movie episode cards
+* fix: allow batch lookup for multi-episode movies
+* fix: add missing extensions on update check
+* fix: positioning and incorrect font scaling on dropdowns
+* fix: make dedupe case-insensitive
+* fix: better fetch error handling
+* fix: media query queue
+* chore: improve Android TV navigation (#163)
+* chore: increase maximum transfer speed to 1GiB
+* chore: tags and genre are now settings responsive
+* chore: sort by seeders if best or batch is unavailable
+  * If batch or best torrent sorting is selected and there are no batches or best torrents, the sorting will fall back to sorting by seeders.
 * chore: improve smart image fallback
   * Introduces proper placeholder images when an image fails to load.
   * Fixes resolving promises for image links.
 * chore: reduce redundant mappings usage
 * chore: adjust mappings cache strategy
+* chore: reduce cache duration of empty queries
+* chore: move details modal to use soft modal
+* chore: improve external playback behavior
 * chore: add extensions cache reset options
+* chore: notify on change of repository manifest
+* chore: exit nav drawer when navigating
+* chore: improve error fallback resolving
+* chore: improve card section positioning
+* chore: add extensions reload button
+* chore: simplify extension cards
+* chore: improve torrent modal
+* chore: add missing tags
+* chore: improve updater
 * chore: update deps
 </details>
 
